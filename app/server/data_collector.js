@@ -3,6 +3,18 @@ const utils		= require('./utils.js');
 const config	= require('../config.js');
 const spawn		= require('child_process').spawn;
 
+const _null = {
+	status: true,
+	version: 'Paper 1.18.2',
+	protocol: 758,
+	description: 'cube',
+	players_online: 0,
+	max_players: 60,
+	player_names: []
+};
+
+///////////////////////////// dataCollect
+
 function fetchData(exec, args)
 {
 	return new Promise((resolve) => {
@@ -25,16 +37,6 @@ function fetchData(exec, args)
 	})
 }
 
-// {
-// 	status: true,
-// 	version: 'Paper 1.18.2',
-// 	protocol: 758,
-// 	description: 'cube',
-// 	players_online: 0,
-// 	max_players: 60,
-// 	player_names: []
-// }
-
 let playersConnected = null;
 
 async function initPlayerConnected()
@@ -52,6 +54,9 @@ async function dataCollector()
 {
 	if (!playersConnected) {
 		await initPlayerConnected();
+		for (const player of playersConnected) {
+			utils.log.info(`${player} is ${utils.colors.green}connected${utils.colors.end}!`);
+		}
 	}
 
 	const data = await fetchData(config.execPath, [config.serverURL]);
@@ -86,6 +91,8 @@ async function dataCollector()
 		content: data,
 	};
 }
+
+///////////////////////////// Sessions
 
 async function newSessions(data)
 {
