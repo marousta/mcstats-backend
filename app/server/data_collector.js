@@ -1,7 +1,6 @@
-const pg		= require('./sql.js')
-const utils		= require('./utils.js')
-const config	= require('../config.js')
-const ws		= require('./websocket.js')
+const pg		= require('./sql.js');
+const utils		= require('./utils.js');
+const config	= require('../config.js');
 const spawn		= require('child_process').spawn;
 
 function fetchData(exec, args)
@@ -51,7 +50,7 @@ async function dataCollector()
 		await initPlayerConnected();
 	}
 
-	const data = await fetchData(config.execPath, ["127.0.0.1"]);
+	const data = await fetchData(config.execPath, [config.serverURL]);
 	console.log(data);
 
 	if (data.player_names.length !== playersConnected.length) {
@@ -69,7 +68,10 @@ async function dataCollector()
 		await initPlayerConnected();
 	}
 
-	return { state: "success" }
+	return {
+		state: "success",
+		content: data,
+	};
 }
 
 async function newSessions()
@@ -154,4 +156,4 @@ async function endSessions()
 	return { state: "success" }
 }
 
-setInterval(dataCollector, 3000);
+module.exports.dataCollector = dataCollector;

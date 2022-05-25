@@ -1,4 +1,6 @@
-module.exports.execPath = "../mc-ping-json/target/release/shalyuping"
+module.exports.execPath = "../mc-ping-json/target/release/ping";
+module.exports.serverURL = "127.0.0.1";
+module.exports.port	= 3001;
 
 
 //Postresql database config
@@ -8,5 +10,5 @@ const pg = {
 	ip:			"127.0.0.1:5432",
 	database:	"mcstats",
 	options:	"client_encoding=UTF8"
-}
-module.exports.psql = "postgresql://" + pg.user + ":" + pg.password + "@" + pg.ip + "/" + pg.database + "?" + pg.options
+};
+module.exports.psql = "postgresql://" + pg.user + ":" + pg.password + "@" + pg.ip + "/" + pg.database + "?" + pg.options;

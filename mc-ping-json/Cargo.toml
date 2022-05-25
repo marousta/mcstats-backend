@@ -1,5 +1,5 @@
 [package]
-name = "shalyuping"
+name = "ping"
 version = "1.0.0"
 authors = ["Jorun <contact@jorun.dev>"]
 edition = "2021"
@@ -8,7 +8,7 @@ description = "Stalking is fun, actually"
 
 [[bin]]
 path = "src/main.rs"
-name = "shalyuping"
+name = "ping"
 
 [dependencies]
 async-minecraft-ping = "0.8"

@@ -1,7 +1,7 @@
-const postgres		= require('pg-native')
-const ProgressBar	= require('progress')
-const utils			= require('./utils.js')
-const config		= require('../config.js').psql
+const postgres		= require('pg-native');
+const ProgressBar	= require('progress');
+const utils			= require('./utils.js');
+const config		= require('../config.js').psql;
 
 //Connect to postgresql database
 const pg = new postgres();
@@ -125,24 +125,6 @@ async function removeSession(username)
 
 /////////////////////////////
 
-async function createLogtime(username, logtime)
-{
-	const transID = utils.getTransID();
-
-	try {
-		pg.prepareSync(transID, `
-			INSERT INTO public.players_logtime
-			(username, logtime)
-			VALUES (${username}, ${logtime})
-		`);
-		pg.executeSync(transID);
-		return response_success();
-	} catch (e) {
-		utils.log.error(["createSession", "insert failed", e]);
-		return response_error(e);
-	};
-}
-
 async function getLogtime(username)
 {
 	const transID = utils.getTransID();
@@ -160,6 +142,24 @@ async function getLogtime(username)
 		return response_success(rows[0]); //Todo
 	} catch (e) {
 		utils.log.error(["getPlayersSessions", "request failed", e]);
+		return response_error(e);
+	};
+}
+
+async function createLogtime(username, logtime)
+{
+	const transID = utils.getTransID();
+
+	try {
+		pg.prepareSync(transID, `
+			INSERT INTO public.players_logtime
+			(username, logtime)
+			VALUES (${username}, ${logtime})
+		`);
+		pg.executeSync(transID);
+		return response_success();
+	} catch (e) {
+		utils.log.error(["createSession", "insert failed", e]);
 		return response_error(e);
 	};
 }
@@ -187,6 +187,6 @@ module.exports.getPlayerSession = getPlayerSession;
 module.exports.createSession = createSession;
 module.exports.removeSession = removeSession;
 
-module.exports.createLogtime = createLogtime;
 module.exports.getLogtime = getLogtime;
+module.exports.createLogtime = createLogtime;
 module.exports.updateLogtime = updateLogtime;
