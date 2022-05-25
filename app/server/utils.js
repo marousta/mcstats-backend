@@ -1,3 +1,13 @@
+const colors = {
+	red: "\x1b[31m",
+	green: "\x1b[32m",
+	blue: "\x1b[34m",
+	cyan: "\x1b[36m",
+	yellow: "\x1b[33m",
+	pink: "\x1b[35m",
+	end: "\x1b[0m",
+};
+
 function getTime(option)
 {
 	let date = new Date(),
@@ -22,25 +32,24 @@ function getTime(option)
 
 function error_log(text)
 {
-	console.log("%s#### ERROR ####%s", "\x1b[31m", "\x1b[0m");
-	console.log("%s%s%s", "\x1b[33m", getTime("log"), "\x1b[0m");
+	console.log("%s#### ERROR ####%s %s%s%s", colors.red, colors.end, colors.yellow, getTime("log"), colors.end);
 	console.log(text);
-	console.log("%s###############%s", "\x1b[31m", "\x1b[0m");
+	console.log("%s###############%s", colors.red, colors.end);
 }
 
 function warning_log(text)
 {
-	console.log("%s[WARNING]%s %s", "\x1b[33m", "\x1b[0m", text);
+	console.log("%s[WARNING]%s %s", colors.yellow, colors.end, text);
 }
 
 function info_log(text)
 {
-	console.log("%s[INFO]%s %s", "\x1b[32m", "\x1b[0m", text);
+	console.log("%s[INFO]%s %s", colors.blue, colors.end, text);
 }
 
 function sql_log(text)
 {
-	console.log("%s[SQL]%s %s", "\x1b[35m", "\x1b[0m", text);
+	console.log("%s[SQL]%s %s", colors.pink, colors.end, text);
 }
 
 function multisplit(string, array)
@@ -84,3 +93,4 @@ module.exports.multisplit = multisplit;
 module.exports.getTimestamp = getTimestamp;
 module.exports.getTransID = getTransID;
 module.exports.extractJSON = extractJSON;
+module.exports.colors = colors;

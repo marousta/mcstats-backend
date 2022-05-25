@@ -96,6 +96,8 @@ async function newSessions(data)
 
 	let diff = player_names.filter(x => !playersConnected.includes(x));
 	for (const player of diff) {
+		utils.log.info(`${player} is ${utils.colors.green}connected${utils.colors.end}!`);
+
 		const ret = await pg.createSession(player);
 		if (ret.state === "error") {
 			utils.log.error(["newSessions", "Unable to create session for " + player]);
@@ -156,6 +158,7 @@ async function endSessions(data)
 
 	let diff = playersConnected.filter(x => !player_names.includes(x));
 	for (const player of diff) {
+		utils.log.info(`${player} is ${utils.colors.red}disconnected${utils.colors.end}!`);
 
 		let ret = await computeLogtime(player);
 		if (ret.state === "error") {
