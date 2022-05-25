@@ -6,10 +6,10 @@ const spawn		= require('child_process').spawn;
 function fetchData(exec, args)
 {
 	return new Promise((resolve) => {
-		let process = spawn(exec, args);
+		let p = spawn(exec, args);
 
-		process.stdout.setEncoding('utf8');
-		process.stdout.on('data', (data) => {
+		p.stdout.setEncoding('utf8');
+		p.stdout.on('data', (data) => {
 			try {
 				let jsonData = JSON.parse(data);
 				resolve(jsonData);
@@ -17,6 +17,10 @@ function fetchData(exec, args)
 				utils.log.error(["FetchData", "JSON parse error", data]);
 				process.exit();
 			}
+		});
+		p.on("error", (e) => {
+			utils.log.error(["fetchData", "Unable to execute " + exec + " file not found"])
+			process.exit();
 		});
 	})
 }
