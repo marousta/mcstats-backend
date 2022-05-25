@@ -14,6 +14,8 @@ catch (e) {
 	process.exit();
 }
 
+///////////////////////////// response
+
 function response_error(error)
 {
 	let response = {
@@ -56,7 +58,8 @@ function response_partial(message = null)
 	};
 }
 
-/////////////////////////////
+///////////////////////////// Sessions
+////////////// get
 
 async function getPlayersSessions()
 {
@@ -103,6 +106,8 @@ async function getPlayerSession(username)
 	};
 }
 
+////////////// insert
+
 async function createSession(username)
 {
 	const transID = utils.getTransID();
@@ -125,6 +130,8 @@ async function createSession(username)
 	};
 }
 
+////////////// delete
+
 async function removeSession(username)
 {
 	const transID = utils.getTransID();
@@ -146,7 +153,28 @@ async function removeSession(username)
 	};
 }
 
-/////////////////////////////
+///////////////////////////// Logtime
+////////////// get
+
+async function getLogtimes()
+{
+	const transID = utils.getTransID();
+
+	try {
+		pg.prepareSync(transID, `
+			SELECT username, logtime
+			FROM public.players_logtime
+		`);
+		rows = pg.executeSync(transID);
+		if (rows.length === 0) {
+			return response_partial("No logtime found");
+		}
+		return response_success(rows);
+	} catch (e) {
+		utils.log.error(["getLogtimes", "request failed", e]);
+		return response_error(e);
+	};
+}
 
 async function getLogtime(username)
 {
@@ -169,12 +197,14 @@ async function getLogtime(username)
 		if (rows.length === 0) {
 			return response_partial("No logtime found for " + username);
 		}
-		return response_success(rows[0]); //Todo
+		return response_success(rows[0]);
 	} catch (e) {
 		utils.log.error(["getLogtime", "request failed", e]);
 		return response_error(e);
 	};
 }
+
+////////////// insert
 
 async function createLogtime(username, logtime)
 {
@@ -198,6 +228,8 @@ async function createLogtime(username, logtime)
 	};
 }
 
+////////////// update
+
 async function updateLogtime(username, logtime)
 {
 	const transID = utils.getTransID();
@@ -219,6 +251,47 @@ async function updateLogtime(username, logtime)
 		return response_error(e);
 	};
 }
+
+///////////////////////////// Logtime history
+
+async function createLogtimeHistory()
+{
+	const transID = utils.getTransID();
+
+	let ret = await getLogtimes();
+	if (ret.state === "error") {
+		utils.log.error(["createLogtimeHistory", "getLogtimes failed"]);
+		return response_error();
+	}
+
+	console.log(ret.content);
+	let username = utils.stringifyArraySQL( utils.extractJSON(ret.content, "username") );
+	let logtime = utils.stringifyArraySQL( utils.extractJSON(ret.content, "logtime"), "\"", "" );
+
+	try {
+		pg.prepareSync(transID, `
+			INSERT INTO public.logtime_history
+			(username, logtime, itime)
+			VALUES (ARRAY${username}, ARRAY${logtime}, NOW()::date)
+		`);
+		pg.executeSync(transID);
+		return response_success();
+	} catch (e) {
+		utils.log.error(["createLogtimeHistory", "insert failed", e]);
+		return response_error(e);
+	};
+}
+
+setInterval(async() => {
+	if (utils.getTime() !== "00:00") {
+		return ;
+	}
+
+	const ret = createLogtimeHistory();
+	if (ret.state == "error") {
+		//
+	}
+}, 60000);
 
 module.exports.getPlayersSessions = getPlayersSessions;
 module.exports.getPlayerSession = getPlayerSession;

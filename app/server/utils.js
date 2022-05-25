@@ -24,10 +24,11 @@ function getTime(option)
 	mm < 10 ? mm = "0" + mm : 0;
 	ss < 10 ? ss = "0" + ss : 0;
 
-	if (option == "log")
-		return ("[" + y + "-" + m + "-" + d  + " at " + hh + ":" + mm + ":" + ss + "] ");
-	else
-		return (hh + ":" + mm);
+	switch (option)
+	{
+		case "log"	: return ("[" + y + "-" + m + "-" + d  + " at " + hh + ":" + mm + ":" + ss + "] ");
+		default		: return (hh + ":" + mm);
+	}
 }
 
 function error_log(text)
@@ -83,14 +84,23 @@ function extractJSON(datas, index)
 	return ret;
 }
 
+function stringifyArraySQL(array, r1 = "\"", r2 = "\'")
+{
+	let json_array = JSON.stringify(array);
+	return json_array.replaceAll(r1, r2);
+}
+
+module.exports.colors = colors;
+
 module.exports.log = {
 	info: info_log,
 	warning: warning_log,
 	error: error_log,
 	sql: sql_log,
 }
+module.exports.getTime = getTime;
 module.exports.multisplit = multisplit;
 module.exports.getTimestamp = getTimestamp;
 module.exports.getTransID = getTransID;
 module.exports.extractJSON = extractJSON;
-module.exports.colors = colors;
+module.exports.stringifyArraySQL = stringifyArraySQL;
