@@ -36,7 +36,7 @@ function response_error(error)
 	if (message.includes("prepared statement", "already exists")) {
 		response.message = "Retry";
 	}
-	utils.log.error(["response_error", error]);
+	// utils.log.error(["response_error", error]);
 	return response;
 }
 
@@ -45,6 +45,14 @@ function response_success(content = null)
 	return {
 		state: "success",
 		content: content,
+	};
+}
+
+function response_partial(message = null)
+{
+	return {
+		state: "partial",
+		message: message,
 	};
 }
 
@@ -71,6 +79,10 @@ async function getPlayerSession(username)
 {
 	const transID = utils.getTransID();
 
+	if (username === undefined) {
+		return response_error("username undefined");
+	}
+
 	try {
 		pg.prepareSync(transID, `
 			SELECT connection_time
@@ -78,8 +90,11 @@ async function getPlayerSession(username)
 			WHERE username='${username}'
 		`);
 		rows = pg.executeSync(transID);
-		if (rows.length !== 1) {
+		if (rows.length > 1) {
 			throw Error("multiple user with the same name");
+		}
+		if (rows.length === 0) {
+			return response_partial("No session found for " + username);
 		}
 		return response_success(rows[0]);
 	} catch (e) {
@@ -92,11 +107,15 @@ async function createSession(username)
 {
 	const transID = utils.getTransID();
 
+	if (username === undefined) {
+		return response_error("username undefined");
+	}
+
 	try {
 		pg.prepareSync(transID, `
 			INSERT INTO public.players_sessions
 			(username, connection_time)
-			VALUES (${username}, ${utils.getTimestamp()})
+			VALUES ('${username}', ${utils.getTimestamp()})
 		`);
 		pg.executeSync(transID);
 		return response_success();
@@ -109,6 +128,10 @@ async function createSession(username)
 async function removeSession(username)
 {
 	const transID = utils.getTransID();
+
+	if (username === undefined) {
+		return response_error("username undefined");
+	}
 
 	try {
 		pg.prepareSync(transID, `
@@ -129,19 +152,26 @@ async function getLogtime(username)
 {
 	const transID = utils.getTransID();
 
+	if (username === undefined) {
+		return response_error("username undefined");
+	}
+
 	try {
 		pg.prepareSync(transID, `
 			SELECT logtime
-			FROM public.players_sessions
+			FROM public.players_logtime
 			WHERE username='${username}'
 		`);
 		rows = pg.executeSync(transID);
-		if (rows.length !== 1) {
+		if (rows.length > 1) {
 			throw Error("multiple user with the same name");
+		}
+		if (rows.length === 0) {
+			return response_partial("No logtime found for " + username);
 		}
 		return response_success(rows[0]); //Todo
 	} catch (e) {
-		utils.log.error(["getPlayersSessions", "request failed", e]);
+		utils.log.error(["getLogtime", "request failed", e]);
 		return response_error(e);
 	};
 }
@@ -150,16 +180,20 @@ async function createLogtime(username, logtime)
 {
 	const transID = utils.getTransID();
 
+	if (username === undefined || logtime === undefined) {
+		return response_error(`${username} ${logtime} => undefined`);
+	}
+
 	try {
 		pg.prepareSync(transID, `
 			INSERT INTO public.players_logtime
 			(username, logtime)
-			VALUES (${username}, ${logtime})
+			VALUES ('${username}', ${logtime})
 		`);
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		utils.log.error(["createSession", "insert failed", e]);
+		utils.log.error(["createLogtime", "insert failed", e]);
 		return response_error(e);
 	};
 }
@@ -167,6 +201,10 @@ async function createLogtime(username, logtime)
 async function updateLogtime(username, logtime)
 {
 	const transID = utils.getTransID();
+
+	if (username === undefined || logtime === undefined) {
+		return response_error(`${username} ${logtime} => undefined`);
+	}
 
 	try {
 		pg.prepareSync(transID, `
@@ -177,7 +215,7 @@ async function updateLogtime(username, logtime)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		utils.log.error(["createSession", "insert failed", e]);
+		utils.log.error(["updateLogtime", "insert failed", e]);
 		return response_error(e);
 	};
 }

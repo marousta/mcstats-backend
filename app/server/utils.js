@@ -65,6 +65,15 @@ function getTransID()
 	})
 }
 
+function extractJSON(datas, index)
+{
+	let ret = [];
+	for (const data of datas) {
+		ret.push(data[index]);
+	}
+	return ret;
+}
+
 module.exports.log = {
 	info: info_log,
 	warning: warning_log,
@@ -74,3 +83,4 @@ module.exports.log = {
 module.exports.multisplit = multisplit;
 module.exports.getTimestamp = getTimestamp;
 module.exports.getTransID = getTransID;
+module.exports.extractJSON = extractJSON;

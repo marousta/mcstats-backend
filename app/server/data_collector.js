@@ -41,11 +41,11 @@ async function initPlayerConnected()
 {
 	let ret = await pg.getPlayersSessions();
 
-	if (ret.state !== "success") {
+	if (ret.state === "error") {
 		log.error(["initPlayerConnected", "Unable to init playersConnected"]);
 		process.exit();
 	}
-	playersConnected = ret.content;
+	playersConnected = utils.extractJSON(ret.content, "username");
 }
 
 async function dataCollector()
@@ -55,17 +55,26 @@ async function dataCollector()
 	}
 
 	const data = await fetchData(config.execPath, [config.serverURL]);
-	console.log(data);
+	// console.log(data);
+
+	// server offline closing sessions and updating logtimes
+	if (data.status === false) {
+		ret = await endSessions(data);
+		if (ret.state === "error") {
+			utils.log.error(["dataCollector", "Unable to update logtime and close sessions"]);
+			return { state: "error" }
+		}
+	}
 
 	if (data.player_names.length !== playersConnected.length) {
-		let ret = await newSessions();
-		if (ret.state !== "success") {
+		let ret = await newSessions(data);
+		if (ret.state === "error") {
 			utils.log.error(["dataCollector", "Unable to update sessions"]);
 			return { state: "error" }
 		}
 
-		ret = await endSessions();
-		if (ret.state !== "success") {
+		ret = await endSessions(data);
+		if (ret.state === "error") {
 			utils.log.error(["dataCollector", "Unable to update logtime and close sessions"]);
 			return { state: "error" }
 		}
@@ -78,18 +87,17 @@ async function dataCollector()
 	};
 }
 
-async function newSessions()
+async function newSessions(data)
 {
 	const player_names = data.player_names;
 	if (player_names.length < playersConnected.length) {
-		return;
+		return { state: "nothing" }
 	}
 
 	let diff = player_names.filter(x => !playersConnected.includes(x));
 	for (const player of diff) {
 		const ret = await pg.createSession(player);
-
-		if (ret.state !== "success") {
+		if (ret.state === "error") {
 			utils.log.error(["newSessions", "Unable to create session for " + player]);
 			return { state: "error" }
 		}
@@ -101,32 +109,37 @@ async function newSessions()
 async function computeLogtime(username)
 {
 	const session = await pg.getPlayerSession(username);
-	if (session !== "success") {
-		utils.error.log(["computeLogtime", "Unable to get session for " + username]);
+	if (session.state === "error") {
+		utils.log.error(["computeLogtime", "Unable to get session for " + username]);
 		return { state: "error" }
 	}
 
+	let createLogtime = false;
+
 	logtime = await pg.getLogtime(username);
-	if (logtime !== "success") {
-		utils.error.log(["computeLogtime", "Unable to get logtime for " + username]);
+	if (logtime.state === "error") {
+		utils.log.error(["computeLogtime", "Unable to get logtime for " + username]);
 		return { state: "error" }
+	} else if (logtime.state === "partial") {
+		utils.log.info(["computeLogtime", logtime.message]);
+		createLogtime = true;
 	}
 
 	const timestamp = utils.getTimestamp();
-	const newLogtime = timestamp - session.content + logtime.content;
+	const newLogtime = timestamp - parseInt(session.content.connection_time) + (logtime.content ? parseInt(logtime.content.logtime) : 0);
 
 	// No records for current user .. creating one
-	if (logtime.content.length !== 0) {
+	if (createLogtime === true) {
 		ret = await pg.createLogtime(username, newLogtime);
-		if (ret !== "success") {
-			utils.error.log(["computeLogtime", "Unable to create logtime for " + username]);
+		if (ret.state === "error") {
+			utils.log.error(["computeLogtime", "Unable to create logtime for " + username]);
 			return { state: "error" }
 		}
 	} else {
 	// updating existing records
 		ret = await pg.updateLogtime(username, newLogtime);
-		if (ret !== "success") {
-			utils.error.log(["computeLogtime", "Unable to update logtime for " + username]);
+		if (ret.state === "error") {
+			utils.log.error(["computeLogtime", "Unable to update logtime for " + username]);
 			return { state: "error" }
 		}
 	}
@@ -134,24 +147,24 @@ async function computeLogtime(username)
 	return { state: "success" }
 }
 
-async function endSessions()
+async function endSessions(data)
 {
 	const player_names = data.player_names;
 	if (player_names.length > playersConnected.length) {
-		return;
+		return { state: "nothing" }
 	}
 
 	let diff = playersConnected.filter(x => !player_names.includes(x));
 	for (const player of diff) {
 
 		let ret = await computeLogtime(player);
-		if (ret.state !== "success") {
+		if (ret.state === "error") {
 			utils.log.error(["endSessions", "Unable to compute logtime for " + player]);
 			return { state: "error" }
 		}
 
 		ret = await pg.removeSession(player);
-		if (ret.state !== "success") {
+		if (ret.state === "error") {
 			utils.log.error(["endSessions", "Unable to end session for " + player]);
 			return { state: "error" }
 		}
