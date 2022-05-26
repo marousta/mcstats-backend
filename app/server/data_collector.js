@@ -38,6 +38,42 @@ function fetchData(exec, args)
 }
 
 let playersConnected = null;
+let playersOnline = 0;
+let serverOnline = false;
+
+async function updateServerStatus(status)
+{
+	serverOnline = status;
+
+	// get previous server status
+	let ret = await pg.getServerStatus(1);
+	if (ret.state === "error") {
+		utils.log.error(["updateServerStatus", "Unable to get server status"]);
+		return { state: "error" };
+	} else if (ret.state === "partial") { // no database entry create one based on current server status
+		utils.log.info(["updateServerStatus", ret.message]);
+
+		ret = await pg.createServerStatus(status);
+		if (ret.state === "error") {
+			utils.log.error(["updateServerStatus", "Unable to create default server status", ret.message]);
+			return { state: "error" };
+		}
+		return { state: "success" };
+	}
+
+	// server database already up to date, nothing to do
+	if (ret.content[0].value === status) {
+		return { state: "success" };
+	}
+
+	// server offline in database, updating ..
+	ret = await pg.createServerStatus(true);
+	if (ret.status === "error") {
+		utils.log.error(["updateServerStatus", "Unable to create server status"]);
+		return { state: "error" };
+	}
+	return { state: "success" };
+}
 
 async function initPlayerConnected()
 {
@@ -62,33 +98,58 @@ async function dataCollector()
 	const data = await fetchData(config.execPath, [config.serverURL]);
 	// console.log(data);
 
-	// server offline closing sessions and updating logtimes
-	if (data.status === false) {
-		ret = await endSessions(data);
-		if (ret.state === "error") {
-			utils.log.error(["dataCollector", "Unable to update logtime and close sessions"]);
-			return { state: "error" }
+	// check server status and create new status if it was previously offline
+	if (data.status === true && serverOnline === false) {
+		utils.log.info(`Server is ${utils.colors.green}up${utils.colors.end}!`);
+
+		let ret = await updateServerStatus(data.status);
+		if (ret.status === "error") {
+			utils.log.error(["dataCollector", "Unable to update server status"]);
+			return { state: "error" };
 		}
 	}
 
-	if (data.player_names.length !== playersConnected.length) {
-		let ret = await newSessions(data);
+	// server offline closing sessions and updating logtimes
+	if (data.status === false && serverOnline === true) {
+		serverOnline = false;
+		utils.log.info(`Server is ${utils.colors.red}down${utils.colors.end}!`);
+
+		ret = await pg.createServerStatus(false);
 		if (ret.state === "error") {
-			utils.log.error(["dataCollector", "Unable to update sessions"]);
-			return { state: "error" }
+			utils.log.error(["dataCollector", "Unable to create server status"]);
+			return { state: "error" };
 		}
 
 		ret = await endSessions(data);
 		if (ret.state === "error") {
 			utils.log.error(["dataCollector", "Unable to update logtime and close sessions"]);
-			return { state: "error" }
+			return { state: "error" };
+		}
+
+		return {
+			state: "success",
+			content: data, //todo
+		};
+	}
+
+	if (serverOnline === true && data.player_names.length !== playersConnected.length) {
+		let ret = await newSessions(data);
+		if (ret.state === "error") {
+			utils.log.error(["dataCollector", "Unable to update sessions"]);
+			return { state: "error" };
+		}
+
+		ret = await endSessions(data);
+		if (ret.state === "error") {
+			utils.log.error(["dataCollector", "Unable to update logtime and close sessions"]);
+			return { state: "error" };
 		}
 		await initPlayerConnected();
 	}
 
 	return {
 		state: "success",
-		content: data,
+		content: data, //todo
 	};
 }
 
@@ -96,9 +157,13 @@ async function dataCollector()
 
 async function newSessions(data)
 {
-	const player_names = data.player_names;
+	let player_names = data.player_names;
+	if (player_names === undefined) {
+		player_names = [];
+	}
+
 	if (player_names.length < playersConnected.length) {
-		return { state: "nothing" }
+		return { state: "nothing" };
 	}
 
 	let diff = player_names.filter(x => !playersConnected.includes(x));
@@ -108,11 +173,11 @@ async function newSessions(data)
 		const ret = await pg.createSession(player);
 		if (ret.state === "error") {
 			utils.log.error(["newSessions", "Unable to create session for " + player]);
-			return { state: "error" }
+			return { state: "error" };
 		}
 	}
 
-	return { state: "success" }
+	return { state: "success" };
 }
 
 async function computeLogtime(username)
@@ -120,7 +185,7 @@ async function computeLogtime(username)
 	const session = await pg.getPlayerSession(username);
 	if (session.state === "error") {
 		utils.log.error(["computeLogtime", "Unable to get session for " + username]);
-		return { state: "error" }
+		return { state: "error" };
 	}
 
 	let createLogtime = false;
@@ -128,7 +193,7 @@ async function computeLogtime(username)
 	logtime = await pg.getLogtime(username);
 	if (logtime.state === "error") {
 		utils.log.error(["computeLogtime", "Unable to get logtime for " + username]);
-		return { state: "error" }
+		return { state: "error" };
 	} else if (logtime.state === "partial") {
 		utils.log.info(["computeLogtime", logtime.message]);
 		createLogtime = true;
@@ -142,25 +207,29 @@ async function computeLogtime(username)
 		ret = await pg.createLogtime(username, newLogtime);
 		if (ret.state === "error") {
 			utils.log.error(["computeLogtime", "Unable to create logtime for " + username]);
-			return { state: "error" }
+			return { state: "error" };
 		}
 	} else {
 	// updating existing records
 		ret = await pg.updateLogtime(username, newLogtime);
 		if (ret.state === "error") {
 			utils.log.error(["computeLogtime", "Unable to update logtime for " + username]);
-			return { state: "error" }
+			return { state: "error" };
 		}
 	}
 
-	return { state: "success" }
+	return { state: "success" };
 }
 
 async function endSessions(data)
 {
-	const player_names = data.player_names;
+	let player_names = data.player_names;
+	if (player_names === undefined) {
+		player_names = [];
+	}
+
 	if (player_names.length > playersConnected.length) {
-		return { state: "nothing" }
+		return { state: "nothing" };
 	}
 
 	let diff = playersConnected.filter(x => !player_names.includes(x));
@@ -170,17 +239,19 @@ async function endSessions(data)
 		let ret = await computeLogtime(player);
 		if (ret.state === "error") {
 			utils.log.error(["endSessions", "Unable to compute logtime for " + player]);
-			return { state: "error" }
+			return { state: "error" };
 		}
 
 		ret = await pg.removeSession(player);
 		if (ret.state === "error") {
 			utils.log.error(["endSessions", "Unable to end session for " + player]);
-			return { state: "error" }
+			return { state: "error" };
 		}
 	}
 
-	return { state: "success" }
+	playersConnected = player_names.filter(x => !playersConnected.includes(x));
+
+	return { state: "success" };
 }
 
 module.exports.dataCollector = dataCollector;

@@ -252,6 +252,101 @@ async function updateLogtime(username, logtime)
 	};
 }
 
+///////////////////////////// Players online
+////////////// get
+
+async function getPlayersOnline()
+{
+	const transID = utils.getTransID();
+
+	try {
+		pg.prepareSync(transID, `
+			SELECT itime, value
+			FROM public.players_online
+		`);
+		rows = pg.executeSync(transID);
+		if (rows.length === 0) {
+			return response_partial("No player online data found");
+		}
+		return response_success(rows);
+	} catch (e) {
+		utils.log.error(["getPlayersOnline", "request failed", e]);
+		return response_error(e);
+	};
+}
+
+////////////// insert
+
+async function createPlayersOnline(value)
+{
+	const transID = utils.getTransID();
+
+	if (value === undefined) {
+		return response_error("value undefined");
+	}
+
+	try {
+		pg.prepareSync(transID, `
+			INSERT INTO public.players_online
+			(itime, value)
+			VALUES ('${utils.getTimestamp()}', ${value})
+		`);
+		pg.executeSync(transID);
+		return response_success();
+	} catch (e) {
+		utils.log.error(["createPlayersOnline", "insert failed", e]);
+		return response_error(e);
+	};
+}
+
+///////////////////////////// Server status
+////////////// get
+
+async function getServerStatus(limit = 0)
+{
+	const transID = utils.getTransID();
+
+	try {
+		pg.prepareSync(transID, `
+			SELECT itime, value
+			FROM public.uptime
+			ORDER BY id DESC ${limit ? "LIMIT " + limit : ""}
+		`);
+		rows = pg.executeSync(transID);
+		if (rows.length === 0) {
+			return response_partial("No server data found");
+		}
+		return response_success(rows);
+	} catch (e) {
+		utils.log.error(["getServerStatus", "request failed", e]);
+		return response_error(e);
+	};
+}
+
+////////////// insert
+
+async function createServerStatus(value)
+{
+	const transID = utils.getTransID();
+
+	if (value === undefined) {
+		return response_error("value undefined");
+	}
+
+	try {
+		pg.prepareSync(transID, `
+			INSERT INTO public.uptime
+			(itime, value)
+			VALUES ('${utils.getTimestamp()}', ${value})
+		`);
+		pg.executeSync(transID);
+		return response_success();
+	} catch (e) {
+		utils.log.error(["createServerStatus", "insert failed", e]);
+		return response_error(e);
+	};
+}
+
 ///////////////////////////// Logtime history
 
 async function createLogtimeHistory()
@@ -301,3 +396,9 @@ module.exports.removeSession = removeSession;
 module.exports.getLogtime = getLogtime;
 module.exports.createLogtime = createLogtime;
 module.exports.updateLogtime = updateLogtime;
+
+module.exports.getPlayersOnline = getPlayersOnline;
+module.exports.createPlayersOnline = createPlayersOnline;
+
+module.exports.getServerStatus = getServerStatus;
+module.exports.createServerStatus = createServerStatus;
