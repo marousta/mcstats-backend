@@ -89,9 +89,36 @@ async function initPlayerConnected()
 
 ///////////////////////////// dataCollect
 
+async function generateReturn(data)
+{
+	// probably overkill here
+	let player_names = data.player_names;
+	if (player_names === undefined) {
+		player_names = [];
+	}
+
+	const since = await pg.getServerStatus(1);
+	if (since.state === "error") {
+		utils.log.error(["generateReturn", "Unable to get server status"]);
+		return { state: "error" };
+	}
+
+	return {
+		state: "success",
+		timestamp: utils.getTimestamp(),
+		serverStatus: {
+			online: serverOnline,
+			since: since.content[0].itime,
+		},
+		connected: playersConnected,
+		playersOnline: playersOnline,
+		maxPlayersOnline: maxPlayersOnline,
+	};
+}
+
 async function dataCollector()
 {
-	if (!playersConnected) {
+	if (playersConnected === null) {
 		await initPlayerConnected();
 		for (const player of playersConnected) {
 			utils.log.info(`${player} is ${utils.colors.green}connected${utils.colors.end}!`);
@@ -132,7 +159,14 @@ async function dataCollector()
 
 		return {
 			state: "success",
-			content: data, //todo
+			timestamp: utils.getTimestamp(),
+			serverStatus: {
+				online: serverOnline,
+				since: utils.getTimestamp(),
+			},
+			connected: [],
+			playersOnline: 0,
+			maxPlayersOnline: maxPlayersOnline,
 		};
 	}
 
@@ -156,10 +190,7 @@ async function dataCollector()
 		maxPlayersOnline = playersOnline;
 	}
 
-	return {
-		state: "success",
-		content: data, //todo
-	};
+	return await generateReturn(data);
 }
 
 ///////////////////////////// Sessions
@@ -286,4 +317,19 @@ setInterval(async() => {
 	}
 }, 60000);
 
+async function initWebsocketData()
+{
+	let ret = await pg.getPlayersSessions();
+	if (ret.state === "error") {
+		utils.log.error(["initWebsocketData", "failed to get players sessions"]);
+		return { state: "error" };
+	}
+
+	return {
+		state: "success",
+		connected: ret.content,
+	}
+}
+
 module.exports.dataCollector = dataCollector;
+module.exports.initWebsocketData = initWebsocketData;

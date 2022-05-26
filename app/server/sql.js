@@ -67,7 +67,7 @@ async function getPlayersSessions()
 
 	try {
 		pg.prepareSync(transID, `
-			SELECT username
+			SELECT username, connection_time
 			FROM public.players_sessions
 		`);
 		rows = pg.executeSync(transID);

@@ -8,9 +8,95 @@ let connected_peers = 0;
 
 /////////////////////////////
 
+function sendConnected(timestamp, players)
+{
+	let message = {
+		type: "log",
+		action: "connect",
+		timestamp: timestamp,
+		affected: [],
+	}
+	for (const player of players) {
+		message.affected.push(player);
+	}
+	dispatch(message);
+}
+
+function sendDisconnected(timestamp, players)
+{
+	let message = {
+		type: "log",
+		action: "disconnect",
+		timestamp: timestamp,
+		affected: [],
+	}
+	for (const player of players) {
+		message.affected.push(player);
+	}
+	dispatch(message);
+}
+
+let serverStatus = null;
+
+function sendUptime(data)
+{
+	let message = {
+		type: "graph",
+		affected: "uptime",
+		data: [{timestamp: data.timestamp, value: data.serverStatus.online}]
+	}
+	dispatch(message);
+}
+
+let playersConnected = [];
+
 setInterval(async() => {
-	data.dataCollector();
+	let ret = await data.dataCollector();
+	if (ret.state === "error") {
+		utils.log.error(["websocket_dataCollector", "collection failed"]);
+		return ;
+	}
+
+	let diff_connected = ret.connected.filter(x => !playersConnected.includes(x));
+	let diff_disconnected = playersConnected.filter(x => !ret.connected.includes(x));
+
+	if (diff_connected.length !== 0) {
+		sendConnected(data.timestamp, diff_connected);
+	}
+	if (diff_disconnected.length !== 0) {
+		sendDisconnected(data.timestamp, diff_disconnected);
+	}
+	playersConnected = ret.connected;
+
+	if (serverStatus === null) {
+		serverStatus = ret.serverStatus;
+	}
+	if (serverStatus.online !== ret.serverStatus.online) {
+		sendUptime(data)
+	}
 }, 3000);
+
+/////////////////////////////
+
+async function initData(uuid)
+{
+	let ret = await data.initWebsocketData();
+	if (ret.state === "error") {
+		utils.log.error(["websocket_initData", "failed to get init data"]);
+		return;
+	}
+
+	if (ret.connected.length !== 0) {
+		for (const player of ret.connected) {
+			webclients[uuid].ws.send(JSON.stringify(message = {
+				type: "log",
+				action: "connect",
+				timestamp: player.connection_time,
+				affected: [player.username],
+			}));
+		}
+	}
+}
 
 /////////////////////////////
 
@@ -21,15 +107,25 @@ function client_alive_timeout(ws, uuid)
 	}, 12000);
 }
 
-function dispatch_error(error, code, override)
+// function dispatch_error(error, code, override)
+// {
+// 	for (const uuid in webclients)
+// 	{
+// 		webclients[uuid].ws.send(JSON.stringify({
+// 			error: error,
+// 			code: code,
+// 			override: override,
+// 		}));
+// 	}
+// }
+
+function dispatch(message)
 {
-	for (const uuid in webclients)
-	{
-		webclients[uuid].ws.send(JSON.stringify({
-			error: error,
-			code: code,
-			override: override,
-		}));
+	for (const uuid in webclients) {
+		webclients[uuid].ws.send(JSON.stringify(message));
+	}
+	if (webclients.length !== 0) {
+		utils.log.info(["dispatched", JSON.stringify(message)]);
 	}
 }
 
@@ -67,47 +163,47 @@ function handler(ws, req)
 	})
 
 	ws.on("close", (ws) => {
-		clearInterval(inster);
+		// clearInterval(inster);
 		console.log("[%s] %sended%s", uuid.substr(0, 10), "\x1b[31m", "\x1b[0m");
 	})
 
 	////////////////////////////
 
-	const players = ["Bunlight","RiisiKulho","ez4w","_Alki","Kyoukus","TikiTikiTomate69","shovel","Sohpie","Relixto","heartsfordanny","sushhi_","Giovanka","Drikonsete","zauve","mineblox667","rhxxn","chapadokk","Daantay","imbiew","Locia","DonutEsser","gras3369","Giovanka","Neejie","Giovanka","Yuids","Demon_08ITA","ChunkyPanda3000","Spritedrx","Arychu", "Vclx","Vasply","aweya","1Hwok","H1ghLucy","D6G","Shhort","miculona","smallpawz","Kssqlf","Koha","feersz","VUUW","Kqiserr","nnex","pixelhorizon1","_BMeCTe_","Tsoht","laaurin_","CyberTux0","lesblian","Womec","1Hwek","bluby","xhinqueLM","ohVelo_","Rydenz","nosotras","vuave","awnxi","Zswy","starchuii","Neivyy","xXFokusiakXx","kicry","Straight","Forgetting","SID_PLAYZONE","Sohpie","Mcblue2080XD","AnKoyunCuk","HazelovS","Hibiikii","natclie","_UvU","Sohpie","LeleBosss","_UvU","VencislavVulka","Un_Der_Bar","EgirlWise","Tenboudai","—","GrabbeadoPorDepp","roobwy","Casus2","vuave","Misunderstanding","Sohpie","lluumii"];
-	let tab = [];
-	let max = 30;
-	let inster = setInterval(() => {
-		const rand1 = players[Math.floor(Math.random() * 100) % (players.length - 1)];
-		ws.send(JSON.stringify({
-			type: "log",
-			action: "connect",
-			affected: [rand1]
-		}));
+	// const players = ["Bunlight","RiisiKulho","ez4w","_Alki","Kyoukus","TikiTikiTomate69","shovel","Sohpie","Relixto","heartsfordanny","sushhi_","Giovanka","Drikonsete","zauve","mineblox667","rhxxn","chapadokk","Daantay","imbiew","Locia","DonutEsser","gras3369","Giovanka","Neejie","Giovanka","Yuids","Demon_08ITA","ChunkyPanda3000","Spritedrx","Arychu", "Vclx","Vasply","aweya","1Hwok","H1ghLucy","D6G","Shhort","miculona","smallpawz","Kssqlf","Koha","feersz","VUUW","Kqiserr","nnex","pixelhorizon1","_BMeCTe_","Tsoht","laaurin_","CyberTux0","lesblian","Womec","1Hwek","bluby","xhinqueLM","ohVelo_","Rydenz","nosotras","vuave","awnxi","Zswy","starchuii","Neivyy","xXFokusiakXx","kicry","Straight","Forgetting","SID_PLAYZONE","Sohpie","Mcblue2080XD","AnKoyunCuk","HazelovS","Hibiikii","natclie","_UvU","Sohpie","LeleBosss","_UvU","VencislavVulka","Un_Der_Bar","EgirlWise","Tenboudai","—","GrabbeadoPorDepp","roobwy","Casus2","vuave","Misunderstanding","Sohpie","lluumii"];
+	// let tab = [];
+	// let max = 30;
+	// let inster = setInterval(() => {
+	// 	const rand1 = players[Math.floor(Math.random() * 100) % (players.length - 1)];
+	// 	ws.send(JSON.stringify({
+	// 		type: "log",
+	// 		action: "connect",
+	// 		affected: [rand1]
+	// 	}));
 
-		tab.push(rand1);
-		if (tab.length === 30) {
-			clearInterval(inster);
-		}
-	}, 200);
+	// 	tab.push(rand1);
+	// 	if (tab.length === 30) {
+	// 		clearInterval(inster);
+	// 	}
+	// }, 200);
 
-	setTimeout(() => {
-		let i = 0;
-		inster = setInterval(() => {
-			ws.send(JSON.stringify({
-				type: "log",
-				action: "disconnect",
-				affected: [tab[i]]
-			}));
+	// setTimeout(() => {
+	// 	let i = 0;
+	// 	inster = setInterval(() => {
+	// 		ws.send(JSON.stringify({
+	// 			type: "log",
+	// 			action: "disconnect",
+	// 			affected: [tab[i]]
+	// 		}));
 
-			i++;
-			if (i === 30) {
-				clearInterval(inster);
-			}
-		}, 200);
-	}, 6500);
+	// 		i++;
+	// 		if (i === 30) {
+	// 			clearInterval(inster);
+	// 		}
+	// 	}, 200);
+	// }, 6500);
 
 	try {
-
+		initData(uuid);
 	}
 	catch (e) {
 		utils.log.error(e);
@@ -117,4 +213,4 @@ function handler(ws, req)
 }
 
 module.exports.handler = handler;
-module.exports.dispatch_error = dispatch_error;
+// module.exports.dispatch_error = dispatch_error;
