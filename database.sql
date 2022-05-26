@@ -59,6 +59,29 @@ CREATE SEQUENCE public.players_logtime_id_seq
 ALTER TABLE public.players_logtime_id_seq OWNER TO postgres;
 ALTER SEQUENCE public.players_logtime_id_seq OWNED BY public.players_logtime.id;
 
+
+--
+-- players_online
+--
+
+CREATE TABLE public.players_online (
+    id integer NOT NULL,
+    itime bigint NOT NULL,
+    value integer NOT NULL
+);
+ALTER TABLE public.players_online OWNER TO postgres;
+
+CREATE SEQUENCE public.players_online_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+ALTER TABLE public.players_online_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.players_online_id_seq OWNED BY public.players_online.id;
+
+
 --
 -- players_sessions
 --
@@ -81,17 +104,44 @@ ALTER TABLE public.players_sessions_id_seq OWNER TO postgres;
 ALTER SEQUENCE public.players_sessions_id_seq OWNED BY public.players_sessions.id;
 
 --
+-- uptime
+--
+
+CREATE TABLE public.uptime (
+    id integer NOT NULL,
+    itime bigint NOT NULL,
+    value boolean NOT NULL
+);
+ALTER TABLE public.uptime OWNER TO postgres;
+
+CREATE SEQUENCE public.uptime_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+ALTER TABLE public.uptime_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.uptime_id_seq OWNED BY public.uptime.id;
+
+--
 --
 --
 
 ALTER TABLE ONLY public.logtime_history ALTER COLUMN id SET DEFAULT nextval('public.logtime_history_id_seq'::regclass);
 ALTER TABLE ONLY public.players_logtime ALTER COLUMN id SET DEFAULT nextval('public.players_logtime_id_seq'::regclass);
+ALTER TABLE ONLY public.players_online ALTER COLUMN id SET DEFAULT nextval('public.players_online_id_seq'::regclass);
 ALTER TABLE ONLY public.players_sessions ALTER COLUMN id SET DEFAULT nextval('public.players_sessions_id_seq'::regclass);
+ALTER TABLE ONLY public.uptime ALTER COLUMN id SET DEFAULT nextval('public.uptime_id_seq'::regclass);
 
 SELECT pg_catalog.setval('public.logtime_history_id_seq', 1, false);
 SELECT pg_catalog.setval('public.players_logtime_id_seq', 5, true);
+SELECT pg_catalog.setval('public.players_online_id_seq', 18, true);
 SELECT pg_catalog.setval('public.players_sessions_id_seq', 12, true);
+SELECT pg_catalog.setval('public.uptime_id_seq', 57, true);
 
 ALTER TABLE ONLY public.logtime_history ADD CONSTRAINT logtime_history_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.players_logtime ADD CONSTRAINT players_logtime_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.players_online ADD CONSTRAINT players_online_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.players_session ADD CONSTRAINT players_sessions_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.uptime ADD CONSTRAINT uptime_pkey PRIMARY KEY (id);
