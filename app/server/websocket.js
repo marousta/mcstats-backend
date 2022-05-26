@@ -67,13 +67,47 @@ function handler(ws, req)
 	})
 
 	ws.on("close", (ws) => {
+		clearInterval(inster);
 		console.log("[%s] %sended%s", uuid.substr(0, 10), "\x1b[31m", "\x1b[0m");
 	})
 
 	////////////////////////////
 
+	const players = ["Bunlight","RiisiKulho","ez4w","_Alki","Kyoukus","TikiTikiTomate69","shovel","Sohpie","Relixto","heartsfordanny","sushhi_","Giovanka","Drikonsete","zauve","mineblox667","rhxxn","chapadokk","Daantay","imbiew","Locia","DonutEsser","gras3369","Giovanka","Neejie","Giovanka","Yuids","Demon_08ITA","ChunkyPanda3000","Spritedrx","Arychu", "Vclx","Vasply","aweya","1Hwok","H1ghLucy","D6G","Shhort","miculona","smallpawz","Kssqlf","Koha","feersz","VUUW","Kqiserr","nnex","pixelhorizon1","_BMeCTe_","Tsoht","laaurin_","CyberTux0","lesblian","Womec","1Hwek","bluby","xhinqueLM","ohVelo_","Rydenz","nosotras","vuave","awnxi","Zswy","starchuii","Neivyy","xXFokusiakXx","kicry","Straight","Forgetting","SID_PLAYZONE","Sohpie","Mcblue2080XD","AnKoyunCuk","HazelovS","Hibiikii","natclie","_UvU","Sohpie","LeleBosss","_UvU","VencislavVulka","Un_Der_Bar","EgirlWise","Tenboudai","—","GrabbeadoPorDepp","roobwy","Casus2","vuave","Misunderstanding","Sohpie","lluumii"];
+	let tab = [];
+	let max = 30;
+	let inster = setInterval(() => {
+		const rand1 = players[Math.floor(Math.random() * 100) % (players.length - 1)];
+		ws.send(JSON.stringify({
+			type: "log",
+			action: "connect",
+			affected: [rand1]
+		}));
+
+		tab.push(rand1);
+		if (tab.length === 30) {
+			clearInterval(inster);
+		}
+	}, 200);
+
+	setTimeout(() => {
+		let i = 0;
+		inster = setInterval(() => {
+			ws.send(JSON.stringify({
+				type: "log",
+				action: "disconnect",
+				affected: [tab[i]]
+			}));
+
+			i++;
+			if (i === 30) {
+				clearInterval(inster);
+			}
+		}, 200);
+	}, 6500);
+
 	try {
-		//todo
+
 	}
 	catch (e) {
 		utils.log.error(e);

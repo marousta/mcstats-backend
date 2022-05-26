@@ -13,7 +13,7 @@ const _null = {
 	player_names: []
 };
 
-///////////////////////////// dataCollect
+/////////////////////////////
 
 function fetchData(exec, args)
 {
@@ -37,14 +37,15 @@ function fetchData(exec, args)
 	})
 }
 
+///////////////////////////// init
+
 let playersConnected = null;
 let playersOnline = 0;
+let maxPlayersOnline = 0;
 let serverOnline = false;
 
 async function updateServerStatus(status)
 {
-	serverOnline = status;
-
 	// get previous server status
 	let ret = await pg.getServerStatus(1);
 	if (ret.state === "error") {
@@ -86,6 +87,8 @@ async function initPlayerConnected()
 	playersConnected = utils.extractJSON(ret.content, "username");
 }
 
+///////////////////////////// dataCollect
+
 async function dataCollector()
 {
 	if (!playersConnected) {
@@ -100,6 +103,7 @@ async function dataCollector()
 
 	// check server status and create new status if it was previously offline
 	if (data.status === true && serverOnline === false) {
+		serverOnline = true;
 		utils.log.info(`Server is ${utils.colors.green}up${utils.colors.end}!`);
 
 		let ret = await updateServerStatus(data.status);
@@ -145,6 +149,11 @@ async function dataCollector()
 			return { state: "error" };
 		}
 		await initPlayerConnected();
+	}
+
+	playersOnline = data.player_names.length;
+	if (maxPlayersOnline < playersOnline) {
+		maxPlayersOnline = playersOnline;
 	}
 
 	return {
@@ -253,5 +262,28 @@ async function endSessions(data)
 
 	return { state: "success" };
 }
+
+async function updatePlayersOnline()
+{
+	utils.log.info(`current: [ ${playersOnline} / 60 ] max: ${maxPlayersOnline}`);
+	const ret = await pg.createPlayersOnline(maxPlayersOnline);
+	if (ret.state === "error") {
+		utils.log.error(["updatePlayersOnline", "Unable to store player value"]);
+		return { state: "error" };
+	}
+	maxPlayersOnline = playersOnline;
+	return { state: "success" };
+}
+
+setInterval(async() => {
+	if (utils.getTime() !== "00:00") {
+		return ;
+	}
+
+	const ret = updatePlayersOnline();
+	if (ret.state == "error") {
+		//
+	}
+}, 60000);
 
 module.exports.dataCollector = dataCollector;
