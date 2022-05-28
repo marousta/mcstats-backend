@@ -309,7 +309,7 @@ async function getServerStatus(limit = 0)
 	try {
 		pg.prepareSync(transID, `
 			SELECT itime, value
-			FROM public.uptime
+			FROM public.server_uptime
 			ORDER BY id DESC ${limit ? "LIMIT " + limit : ""}
 		`);
 		rows = pg.executeSync(transID);
@@ -335,7 +335,7 @@ async function createServerStatus(value)
 
 	try {
 		pg.prepareSync(transID, `
-			INSERT INTO public.uptime
+			INSERT INTO public.server_uptime
 			(itime, value)
 			VALUES ('${utils.getTimestamp()}', ${value})
 		`);
@@ -348,6 +348,30 @@ async function createServerStatus(value)
 }
 
 ///////////////////////////// Logtime history
+////////////// get
+
+async function getLogtimeHistory(limit = 0)
+{
+	const transID = utils.getTransID();
+
+	try {
+		pg.prepareSync(transID, `
+			SELECT username, logtime, itime
+			FROM public.logtime_history
+			ORDER BY id ASC
+		`);
+		rows = pg.executeSync(transID);
+		if (rows.length === 0) {
+			return response_partial("No logtime history found");
+		}
+		return response_success(rows);
+	} catch (e) {
+		utils.log.error(["getLogtimeHistory", "request failed", e]);
+		return response_error(e);
+	};
+}
+
+////////////// insert
 
 async function createLogtimeHistory()
 {
@@ -393,9 +417,12 @@ module.exports.getPlayerSession = getPlayerSession;
 module.exports.createSession = createSession;
 module.exports.removeSession = removeSession;
 
+module.exports.getLogtimes = getLogtimes;
 module.exports.getLogtime = getLogtime;
 module.exports.createLogtime = createLogtime;
 module.exports.updateLogtime = updateLogtime;
+
+module.exports.getLogtimeHistory = getLogtimeHistory;
 
 module.exports.getPlayersOnline = getPlayersOnline;
 module.exports.createPlayersOnline = createPlayersOnline;

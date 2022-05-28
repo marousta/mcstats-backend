@@ -50,31 +50,31 @@ function sendUptime(data)
 
 let playersConnected = [];
 
-setInterval(async() => {
-	let ret = await data.dataCollector();
-	if (ret.state === "error") {
-		utils.log.error(["websocket_dataCollector", "collection failed"]);
-		return ;
-	}
+// setInterval(async() => {
+// 	let ret = await data.dataCollector();
+// 	if (ret.state === "error") {
+// 		utils.log.error(["websocket_dataCollector", "collection failed"]);
+// 		return ;
+// 	}
 
-	let diff_connected = ret.connected.filter(x => !playersConnected.includes(x));
-	let diff_disconnected = playersConnected.filter(x => !ret.connected.includes(x));
+// 	let diff_connected = ret.connected.filter(x => !playersConnected.includes(x));
+// 	let diff_disconnected = playersConnected.filter(x => !ret.connected.includes(x));
 
-	if (diff_connected.length !== 0) {
-		sendConnected(data.timestamp, diff_connected);
-	}
-	if (diff_disconnected.length !== 0) {
-		sendDisconnected(data.timestamp, diff_disconnected);
-	}
-	playersConnected = ret.connected;
+// 	if (diff_connected.length !== 0) {
+// 		sendConnected(data.timestamp, diff_connected);
+// 	}
+// 	if (diff_disconnected.length !== 0) {
+// 		sendDisconnected(data.timestamp, diff_disconnected);
+// 	}
+// 	playersConnected = ret.connected;
 
-	if (serverStatus === null) {
-		serverStatus = ret.serverStatus;
-	}
-	if (serverStatus.online !== ret.serverStatus.online) {
-		sendUptime(data)
-	}
-}, 3000);
+// 	if (serverStatus === null) {
+// 		serverStatus = ret.serverStatus;
+// 	}
+// 	if (serverStatus.online !== ret.serverStatus.online) {
+// 		sendUptime(data)
+// 	}
+// }, 3000);
 
 /////////////////////////////
 
@@ -86,15 +86,17 @@ async function initData(uuid)
 		return;
 	}
 
-	if (ret.connected.length !== 0) {
-		for (const player of ret.connected) {
-			webclients[uuid].ws.send(JSON.stringify(message = {
-				type: "log",
-				action: "connect",
-				timestamp: player.connection_time,
-				affected: [player.username],
-			}));
-		}
+	webclients[uuid].ws.send(JSON.stringify({
+		type: "init",
+		...ret.init,
+	}));
+
+	if (ret.playersConnected !== null) {
+		webclients[uuid].ws.send(JSON.stringify({
+			type: "log",
+			action: "connect",
+			affected: ret.playersConnected,
+		}));
 	}
 }
 

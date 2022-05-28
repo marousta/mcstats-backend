@@ -185,6 +185,7 @@ async function dataCollector()
 		await initPlayerConnected();
 	}
 
+	// playersOnline++
 	playersOnline = data.player_names.length;
 	if (maxPlayersOnline < playersOnline) {
 		maxPlayersOnline = playersOnline;
@@ -220,40 +221,48 @@ async function newSessions(data)
 	return { state: "success" };
 }
 
-async function computeLogtime(username)
+function calcLogtime(session, current)
 {
-	const session = await pg.getPlayerSession(username);
+	const timestamp = utils.getTimestamp();
+	const logtime = timestamp - parseInt(session.connection_time) + (current ? parseInt(current.logtime) : 0);
+	return logtime;
+}
+
+async function createLogtime(username)
+{
+	let session = await pg.getPlayerSession(username);
 	if (session.state === "error") {
-		utils.log.error(["computeLogtime", "Unable to get session for " + username]);
+		utils.log.error(["createLogtime", "Unable to get session for " + username]);
 		return { state: "error" };
 	}
+	session = session.content;
 
 	let createLogtime = false;
 
-	logtime = await pg.getLogtime(username);
+	let logtime = await pg.getLogtime(username);
 	if (logtime.state === "error") {
-		utils.log.error(["computeLogtime", "Unable to get logtime for " + username]);
+		utils.log.error(["createLogtime", "Unable to get logtime for " + username]);
 		return { state: "error" };
 	} else if (logtime.state === "partial") {
-		utils.log.info(["computeLogtime", logtime.message]);
+		utils.log.info(["createLogtime", logtime.message]);
 		createLogtime = true;
 	}
+	logtime = logtime.current;
 
-	const timestamp = utils.getTimestamp();
-	const newLogtime = timestamp - parseInt(session.content.connection_time) + (logtime.content ? parseInt(logtime.content.logtime) : 0);
+	const newLogtime = calcLogtime(session, logtime)
 
 	// No records for current user .. creating one
 	if (createLogtime === true) {
 		ret = await pg.createLogtime(username, newLogtime);
 		if (ret.state === "error") {
-			utils.log.error(["computeLogtime", "Unable to create logtime for " + username]);
+			utils.log.error(["createLogtime", "Unable to create logtime for " + username]);
 			return { state: "error" };
 		}
 	} else {
 	// updating existing records
 		ret = await pg.updateLogtime(username, newLogtime);
 		if (ret.state === "error") {
-			utils.log.error(["computeLogtime", "Unable to update logtime for " + username]);
+			utils.log.error(["createLogtime", "Unable to update logtime for " + username]);
 			return { state: "error" };
 		}
 	}
@@ -276,7 +285,7 @@ async function endSessions(data)
 	for (const player of diff) {
 		utils.log.info(`${player} is ${utils.colors.red}disconnected${utils.colors.end}!`);
 
-		let ret = await computeLogtime(player);
+		let ret = await createLogtime(player);
 		if (ret.state === "error") {
 			utils.log.error(["endSessions", "Unable to compute logtime for " + player]);
 			return { state: "error" };
@@ -319,17 +328,153 @@ setInterval(async() => {
 
 async function initWebsocketData()
 {
-	let ret = await pg.getPlayersSessions();
-	if (ret.state === "error") {
-		utils.log.error(["initWebsocketData", "failed to get players sessions"]);
+	let playersSessions = await pg.getPlayersSessions();
+	if (playersSessions.state === "error") {
+		utils.log.error(["initWebsocketData", "get playersSessions failed"]);
 		return { state: "error" };
+	}
+	playersSessions = playersSessions.content;
+
+	let serverStatus = await pg.getServerStatus();
+	if (serverStatus.state === "error") {
+		utils.log.error(["initWebsocketData", "get serverStatus failed"]);
+		return { state: "error" };
+	}
+	serverStatus = serverStatus.content;
+
+	let playersLogitmesHistory = await pg.getLogtimeHistory();
+	if (playersLogitmesHistory.state === "error") {
+		utils.log.error(["initWebsocketData", "get playersLogitmesHistory failed"]);
+		return { state: "error" };
+	}
+	playersLogitmesHistory = playersLogitmesHistory.content;
+
+	let playersLogtimesCurrent = await pg.getLogtimes();
+	if (playersLogtimesCurrent.state === "error") {
+		utils.log.error(["initWebsocketData", "get playersLogtimesCurrent failed"]);
+		return { state: "error" };
+	}
+	playersLogtimesCurrent = playersLogtimesCurrent.content;
+
+	let playersOnlineHistory = await pg.getPlayersOnline();
+	if (playersOnlineHistory.state === "error") {
+		utils.log.error(["initWebsocketData", "get playersOnlineHistory failed"]);
+		return { state: "error" };
+	}
+	playersOnlineHistory = playersOnlineHistory.content;
+
+	let ret = {
+		type: "init",
+		uptime: { sessions: [] },
+		players: [],
+		daily: []
+	}
+
+	// uptime: {
+    //     sessions: [
+    //         { up, down },
+    //     ],
+    // }
+	for (let i in serverStatus) {
+		let session = {
+			up: 0,
+			down: 0,
+		}
+		if (i === 0 && serverStatus[i].value === true) {
+			session.down = 0;
+			session.up = serverStatus[i].itime;
+		} else {
+			if (serverStatus[i + 1]) {
+				session.down = serverStatus[i].itime;
+				session.up = serverStatus[++i].itime;
+			} else {
+				session.down = 0;
+				session.up = serverStatus[i].itime;
+			}
+		}
+		ret.uptime.sessions.push(session);
+	}
+
+	// players: [
+    //     {
+    //         username,
+    //         data: [
+	//				{ date, logtime },
+    //         ],
+    //         todayLogtime,
+    //     },
+    // ]
+
+	// console.log(playersLogitmesHistory);
+	for (const history of playersLogitmesHistory) {
+		for (const i in history.username) {
+			const username = history.username[i];
+			const duplicate = ret.players.filter(x => x.username === username)
+			if (duplicate.length !== 0) {
+				continue;
+			}
+			let player = {
+				username: username,
+				data: [],
+				todayLogtime: playersSessions.length !== 0 ? calcLogtime(playersSessions, history.logtime[i]) : history.logtime[i],
+			};
+			for (const x in playersLogitmesHistory) {
+				player.data.push({
+					date: playersLogitmesHistory[x].itime,
+					logtime: playersLogitmesHistory[x].logtime[i],
+				});
+			};
+			ret.players.push(player);
+		}
+	}
+
+	// daily: [
+	// 	{ date, maxPlayers },
+    // ]
+	for (const data of playersOnlineHistory) {
+		let daily = {
+			date: data.itime,
+			maxPlayers: data.value,
+		};
+		ret.daily.push(daily);
 	}
 
 	return {
 		state: "success",
-		connected: ret.content,
-	}
+		init: ret,
+		playersConnected: playersSessions.length !== 0 ? utils.extractJSON(playersSessions) : null,
+	};
 }
+
+const t = {
+    type: "init",
+    uptime: {
+        sessions: [
+            {
+                up: 135236146,
+				down: 2352523,
+            },
+            {
+                up: 135236146,
+                down: 2352523,
+            }
+        ],
+    },
+    players: [
+        {
+            username: "toon_lien",
+            data: [
+                { date: "2022-05-25", logtime: 50 },
+                { date: "2022-05-26", logtime: 30 },
+            ],
+            todayLogtime: 10
+        },
+    ],
+    daily: [
+		{ date: "2022-05-25", maxPlayers: 10 },
+		{ date: "2022-05-26", maxPlayers: 7 },
+    ],
+};
 
 module.exports.dataCollector = dataCollector;
 module.exports.initWebsocketData = initWebsocketData;

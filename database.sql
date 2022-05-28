@@ -104,25 +104,25 @@ ALTER TABLE public.players_sessions_id_seq OWNER TO postgres;
 ALTER SEQUENCE public.players_sessions_id_seq OWNED BY public.players_sessions.id;
 
 --
--- uptime
+-- server_uptime
 --
 
-CREATE TABLE public.uptime (
+CREATE TABLE public.server_uptime (
     id integer NOT NULL,
     itime bigint NOT NULL,
     value boolean NOT NULL
 );
-ALTER TABLE public.uptime OWNER TO postgres;
+ALTER TABLE public.server_uptime OWNER TO postgres;
 
-CREATE SEQUENCE public.uptime_id_seq
+CREATE SEQUENCE public.server_uptime_id_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE public.uptime_id_seq OWNER TO postgres;
-ALTER SEQUENCE public.uptime_id_seq OWNED BY public.uptime.id;
+ALTER TABLE public.server_uptime_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.server_uptime_id_seq OWNED BY public.server_uptime.id;
 
 --
 --
