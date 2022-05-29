@@ -1,6 +1,7 @@
 const guuid			= require('uuid');
 const data			= require('./data_collector.js');
-const utils			= require('./utils.js');
+const utils			= require('./utils/utils.js');
+const logs			= require('./utils/logs.js');
 
 let webclients		= [];
 let client_timeout	= [];
@@ -50,31 +51,31 @@ function sendUptime(data)
 
 let playersConnected = [];
 
-// setInterval(async() => {
-// 	let ret = await data.dataCollector();
-// 	if (ret.state === "error") {
-// 		utils.log.error(["websocket_dataCollector", "collection failed"]);
-// 		return ;
-// 	}
+setInterval(async() => {
+	let ret = await data.dataCollector();
+	if (ret.state === "error") {
+		logs.error(["websocket_dataCollector", "collection failed"]);
+		return ;
+	}
 
-// 	let diff_connected = ret.connected.filter(x => !playersConnected.includes(x));
-// 	let diff_disconnected = playersConnected.filter(x => !ret.connected.includes(x));
+	let diff_connected = ret.connected.filter(x => !playersConnected.includes(x));
+	let diff_disconnected = playersConnected.filter(x => !ret.connected.includes(x));
 
-// 	if (diff_connected.length !== 0) {
-// 		sendConnected(data.timestamp, diff_connected);
-// 	}
-// 	if (diff_disconnected.length !== 0) {
-// 		sendDisconnected(data.timestamp, diff_disconnected);
-// 	}
-// 	playersConnected = ret.connected;
+	if (diff_connected.length !== 0) {
+		sendConnected(data.timestamp, diff_connected);
+	}
+	if (diff_disconnected.length !== 0) {
+		sendDisconnected(data.timestamp, diff_disconnected);
+	}
+	playersConnected = ret.connected;
 
-// 	if (serverStatus === null) {
-// 		serverStatus = ret.serverStatus;
-// 	}
-// 	if (serverStatus.online !== ret.serverStatus.online) {
-// 		sendUptime(data)
-// 	}
-// }, 3000);
+	if (serverStatus === null) {
+		serverStatus = ret.serverStatus;
+	}
+	if (serverStatus.online !== ret.serverStatus.online) {
+		sendUptime(data)
+	}
+}, 3000);
 
 /////////////////////////////
 
@@ -82,7 +83,7 @@ async function initData(uuid)
 {
 	let ret = await data.initWebsocketData();
 	if (ret.state === "error") {
-		utils.log.error(["websocket_initData", "failed to get init data"]);
+		logs.error(["websocket_initData", "failed to get init data"]);
 		return;
 	}
 
@@ -127,7 +128,7 @@ function dispatch(message)
 		webclients[uuid].ws.send(JSON.stringify(message));
 	}
 	if (webclients.length !== 0) {
-		utils.log.info(["dispatched", JSON.stringify(message)]);
+		logs.info(["dispatched", JSON.stringify(message)]);
 	}
 }
 
@@ -160,7 +161,7 @@ function handler(ws, req)
 			client_alive_timeout(ws, uuid);
 		}
 		catch (e) {
-			utils.log.error(["websocket_recevied", msg]);
+			logs.error(["websocket_recevied", msg]);
 		}
 	})
 
@@ -208,7 +209,7 @@ function handler(ws, req)
 		initData(uuid);
 	}
 	catch (e) {
-		utils.log.error(e);
+		logs.error(e);
 		ws.send("error");
 		ws.close();
 	}

@@ -1,16 +1,17 @@
 const postgres		= require('pg-native');
 const ProgressBar	= require('progress');
-const utils			= require('./utils.js');
+const utils			= require('./utils/utils.js');
+const logs			= require('./utils/logs.js');
 const config		= require('../config.js').psql;
 
 //Connect to postgresql database
 const pg = new postgres();
 try {
 	pg.connectSync(config);
-	console.log("Connected to database.");
+	logs.info("Connected to database.");
 }
 catch (e) {
-	utils.log.error("Unable to connect to postgresql database. Please check configuration or start the server !");
+	logs.error("Unable to connect to postgresql database. Please check configuration or start the server !");
 	process.exit();
 }
 
@@ -38,7 +39,7 @@ function response_error(error)
 	if (message.includes("prepared statement", "already exists")) {
 		response.message = "Retry";
 	}
-	// utils.log.error(["response_error", error]);
+	// logs.error(["response_error", error]);
 	return response;
 }
 
@@ -73,7 +74,7 @@ async function getPlayersSessions()
 		rows = pg.executeSync(transID);
 		return response_success(rows);
 	} catch (e) {
-		utils.log.error(["getPlayersSessions", "request failed", e]);
+		logs.error(["getPlayersSessions", "request failed", e]);
 		return response_error(e);
 	};
 }
@@ -101,7 +102,7 @@ async function getPlayerSession(username)
 		}
 		return response_success(rows[0]);
 	} catch (e) {
-		utils.log.error(["getPlayerSession", "request failed", e]);
+		logs.error(["getPlayerSession", "request failed", e]);
 		return response_error(e);
 	};
 }
@@ -125,7 +126,7 @@ async function createSession(username)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		utils.log.error(["createSession", "insert failed", e]);
+		logs.error(["createSession", "insert failed", e]);
 		return response_error(e);
 	};
 }
@@ -148,7 +149,7 @@ async function removeSession(username)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		utils.log.error(["createSession", "delete failed", e]);
+		logs.error(["createSession", "delete failed", e]);
 		return response_error(e);
 	};
 }
@@ -171,7 +172,7 @@ async function getLogtimes()
 		}
 		return response_success(rows);
 	} catch (e) {
-		utils.log.error(["getLogtimes", "request failed", e]);
+		logs.error(["getLogtimes", "request failed", e]);
 		return response_error(e);
 	};
 }
@@ -199,7 +200,7 @@ async function getLogtime(username)
 		}
 		return response_success(rows[0]);
 	} catch (e) {
-		utils.log.error(["getLogtime", "request failed", e]);
+		logs.error(["getLogtime", "request failed", e]);
 		return response_error(e);
 	};
 }
@@ -223,7 +224,7 @@ async function createLogtime(username, logtime)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		utils.log.error(["createLogtime", "insert failed", e]);
+		logs.error(["createLogtime", "insert failed", e]);
 		return response_error(e);
 	};
 }
@@ -247,7 +248,7 @@ async function updateLogtime(username, logtime)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		utils.log.error(["updateLogtime", "insert failed", e]);
+		logs.error(["updateLogtime", "insert failed", e]);
 		return response_error(e);
 	};
 }
@@ -270,7 +271,7 @@ async function getPlayersOnline()
 		}
 		return response_success(rows);
 	} catch (e) {
-		utils.log.error(["getPlayersOnline", "request failed", e]);
+		logs.error(["getPlayersOnline", "request failed", e]);
 		return response_error(e);
 	};
 }
@@ -294,7 +295,7 @@ async function createPlayersOnline(value)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		utils.log.error(["createPlayersOnline", "insert failed", e]);
+		logs.error(["createPlayersOnline", "insert failed", e]);
 		return response_error(e);
 	};
 }
@@ -318,7 +319,7 @@ async function getServerStatus(limit = 0)
 		}
 		return response_success(rows);
 	} catch (e) {
-		utils.log.error(["getServerStatus", "request failed", e]);
+		logs.error(["getServerStatus", "request failed", e]);
 		return response_error(e);
 	};
 }
@@ -342,7 +343,7 @@ async function createServerStatus(value)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		utils.log.error(["createServerStatus", "insert failed", e]);
+		logs.error(["createServerStatus", "insert failed", e]);
 		return response_error(e);
 	};
 }
@@ -366,7 +367,7 @@ async function getLogtimeHistory(limit = 0)
 		}
 		return response_success(rows);
 	} catch (e) {
-		utils.log.error(["getLogtimeHistory", "request failed", e]);
+		logs.error(["getLogtimeHistory", "request failed", e]);
 		return response_error(e);
 	};
 }
@@ -379,7 +380,7 @@ async function createLogtimeHistory()
 
 	let ret = await getLogtimes();
 	if (ret.state === "error") {
-		utils.log.error(["createLogtimeHistory", "getLogtimes failed"]);
+		logs.error(["createLogtimeHistory", "getLogtimes failed"]);
 		return response_error();
 	}
 
@@ -396,7 +397,7 @@ async function createLogtimeHistory()
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		utils.log.error(["createLogtimeHistory", "insert failed", e]);
+		logs.error(["createLogtimeHistory", "insert failed", e]);
 		return response_error(e);
 	};
 }
