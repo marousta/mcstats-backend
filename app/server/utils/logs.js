@@ -1,8 +1,9 @@
 const colors = require("./colors.js");
+const time = require("./time.js");
 
 function logError(text)
 {
-	console.log("%s[ERROR]%s %s%s%s", colors.red, colors.end, colors.yellow, getTime("log"), colors.end, text);
+	console.log("%s[ERROR]%s %s%s%s", colors.red, colors.end, colors.yellow, time.getTime("log"), colors.end, text);
 }
 
 function logWarning(text)

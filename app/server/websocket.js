@@ -1,6 +1,7 @@
 const guuid			= require('uuid');
 const data			= require('./data_collector.js');
 const utils			= require('./utils/utils.js');
+const responseCheck	= require('./utils/response.js');
 const logs			= require('./utils/logs.js');
 
 let webclients		= [];
@@ -51,10 +52,10 @@ function sendUptime(data)
 
 let playersConnected = [];
 
-setInterval(async() => {
-	let ret = await data.dataCollector();
+async function collect()
+{
+	const ret = await data.dataCollector();
 	if (ret.state === "error") {
-		logs.error(["websocket_dataCollector", "collection failed"]);
 		return ;
 	}
 
@@ -75,7 +76,9 @@ setInterval(async() => {
 	if (serverStatus.online !== ret.serverStatus.online) {
 		sendUptime(data)
 	}
-}, 3000);
+}
+
+setInterval(collect, 3000);
 
 /////////////////////////////
 
@@ -87,17 +90,21 @@ async function initData(uuid)
 		return;
 	}
 
-	webclients[uuid].ws.send(JSON.stringify({
+	let message = {
 		type: "init",
 		...ret.init,
-	}));
+	};
+	webclients[uuid].ws.send(JSON.stringify(message));
+	// logs.info("dispatched " + JSON.stringify(message));
 
-	if (ret.playersConnected !== null) {
-		webclients[uuid].ws.send(JSON.stringify({
+	if (ret.playersConnected.length !== 0) {
+		message = {
 			type: "log",
 			action: "connect",
 			affected: ret.playersConnected,
-		}));
+		};
+		webclients[uuid].ws.send(JSON.stringify(message));
+		// logs.info("dispatched " + JSON.stringify(message));
 	}
 }
 

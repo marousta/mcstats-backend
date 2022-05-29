@@ -9,12 +9,12 @@ module.exports = (response, errMessage = null) => {
     const frame = e.stack.split("\n")[2];
     const lineNumber = frame.split(":").reverse()[1];
     const functionName = frame.split(" ")[5];
-	const message = `${functionName}:${lineNumber} ${errMessage ? errMessage : "failed"}`;
+	const message = `${functionName}:${lineNumber}`;
 
 	if (response.state === "partial") {
-		logs.logWarning(message);
+		logs.warning(`${message} ${response.message}`);
 		return "empty";
 	}
-	logs.logError(message);
+	logs.error(`${message} ${errMessage ? errMessage : "failed"} ${response.message ? "\n" + response.message : ""}`);
 	return "error";
 }

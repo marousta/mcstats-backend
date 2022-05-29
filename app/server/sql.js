@@ -2,6 +2,8 @@ const postgres		= require('pg-native');
 const ProgressBar	= require('progress');
 const utils			= require('./utils/utils.js');
 const logs			= require('./utils/logs.js');
+const time			= require('./utils/time.js');
+const responseCheck	= require('./utils/response.js');
 const config		= require('../config.js').psql;
 
 //Connect to postgresql database
@@ -31,15 +33,8 @@ function response_error(error)
 		response.message = error;
 		return response;
 	}
-
-	const e = error.message.split("\n");
-	const message = e[0];
-	const details = e[1];
-
-	if (message.includes("prepared statement", "already exists")) {
-		response.message = "Retry";
-	}
-	// logs.error(["response_error", error]);
+	response.message = error.message;
+	// logs.error(error);
 	return response;
 }
 
@@ -121,7 +116,7 @@ async function createSession(username)
 		pg.prepareSync(transID, `
 			INSERT INTO public.players_sessions
 			(username, connection_time)
-			VALUES ('${username}', ${utils.getTimestamp()})
+			VALUES ('${username}', ${time.getTimestamp()})
 		`);
 		pg.executeSync(transID);
 		return response_success();
@@ -290,7 +285,7 @@ async function createPlayersOnline(value)
 		pg.prepareSync(transID, `
 			INSERT INTO public.players_online
 			(itime, value)
-			VALUES ('${utils.getTimestamp()}', ${value})
+			VALUES ('${time.getTimestamp()}', ${value})
 		`);
 		pg.executeSync(transID);
 		return response_success();
@@ -338,7 +333,7 @@ async function createServerStatus(value)
 		pg.prepareSync(transID, `
 			INSERT INTO public.server_uptime
 			(itime, value)
-			VALUES ('${utils.getTimestamp()}', ${value})
+			VALUES ('${time.getTimestamp()}', ${value})
 		`);
 		pg.executeSync(transID);
 		return response_success();
@@ -378,15 +373,13 @@ async function createLogtimeHistory()
 {
 	const transID = utils.getTransID();
 
-	let ret = await getLogtimes();
-	if (ret.state === "error") {
-		logs.error(["createLogtimeHistory", "getLogtimes failed"]);
+	let ret = responseCheck(await getLogtimes(), "getLogtimes failed");
+	if (ret === "error") {
 		return response_error();
 	}
 
-	console.log(ret.content);
-	let username = utils.stringifyArraySQL( utils.extractJSON(ret.content, "username") );
-	let logtime = utils.stringifyArraySQL( utils.extractJSON(ret.content, "logtime"), "\"", "" );
+	let username = utils.stringifyArraySQL( utils.extractJSON(ret, "username") );
+	let logtime = utils.stringifyArraySQL( utils.extractJSON(ret, "logtime"), "\"", "" );
 
 	try {
 		pg.prepareSync(transID, `
@@ -403,13 +396,13 @@ async function createLogtimeHistory()
 }
 
 setInterval(async() => {
-	if (utils.getTime() !== "00:00") {
+	if (time.getTime() !== "00:00") {
 		return ;
 	}
 
-	const ret = createLogtimeHistory();
-	if (ret.state == "error") {
-		//
+	const ret = responseCheck(await createLogtimeHistory());
+	if (ret !== "error") {
+		logs.info("Logtime history successfully created.");
 	}
 }, 60000);
 
