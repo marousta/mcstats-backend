@@ -299,7 +299,7 @@ async function updatePlayersOnline()
 	if (ret === "error") {
 		return { state: "error" };
 	}
-	maxPlayersOnline = playersOnline;
+	maxPlayersOnline = 0;
 	return { state: "success" };
 }
 
