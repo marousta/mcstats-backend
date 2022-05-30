@@ -214,7 +214,7 @@ async function newSessions(data)
 function calcLogtime(session, current)
 {
 	const timestamp = time.getTimestamp();
-	const logtime = timestamp - parseInt(session.connection_time) + (current ? parseInt(current.logtime) : 0);
+	const logtime = timestamp - parseInt(session.connection_time) + (typeof(current) === "object" ? parseInt(current.logtime) : 0);
 	return logtime;
 }
 
