@@ -428,8 +428,10 @@ async function initWebsocketData()
 // };
 
 setInterval(async() => {
-	let hours = parseInt(time.getTime().split(":")[0]);
-	if (hours % 6) {
+	const t = time.getTime().split(":")
+	const hours = parseInt(t[0]);
+	const mins = parseInt(t[1]);
+	if (hours % 6 || (hours % 6 === 0 && mins % 60)) {
 		return ;
 	}
 
