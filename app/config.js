@@ -1,7 +1,11 @@
 module.exports.execPath = "../mc-ping-json/target/release/ping";
 module.exports.serverURL = "127.0.0.1";
 module.exports.port	= 3001;
-
+module.exports.discord = {
+	token: "",
+	channel: "",
+	user: "",
+}
 
 //Postresql database config
 const pg = {

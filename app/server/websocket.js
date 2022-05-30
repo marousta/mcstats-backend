@@ -1,6 +1,7 @@
 const guuid			= require('uuid');
 const data			= require('./data_collector.js');
 const logs			= require('./utils/logs.js');
+const time			= require('./utils/time.js');
 
 let webclients		= [];
 let client_timeout	= [];
@@ -43,7 +44,9 @@ function sendUptime(data)
 	let message = {
 		type: "graph",
 		affected: "uptime",
-		data: [{timestamp: data.timestamp, value: data.serverStatus.online}]
+		data: [
+			{ data: data.serverStatus.online, label: new time.getDate(data.timestamp).date() }
+		]
 	}
 	dispatch(message);
 }
@@ -77,6 +80,18 @@ async function collect()
 }
 
 setInterval(collect, 3000);
+
+function sendMaxPlayers(data)
+{
+	let message = {
+		type: "graph",
+		affected: "maxPlayers",
+		new_data: [
+			{ data: data.maxPlayersOnline, label: new time.getDate(time.getTimestamp()).full() }
+		]
+	};
+	dispatch(message);
+}
 
 /////////////////////////////
 
@@ -189,39 +204,6 @@ function handler(ws, req)
 
 	////////////////////////////
 
-	// const players = ["Bunlight","RiisiKulho","ez4w","_Alki","Kyoukus","TikiTikiTomate69","shovel","Sohpie","Relixto","heartsfordanny","sushhi_","Giovanka","Drikonsete","zauve","mineblox667","rhxxn","chapadokk","Daantay","imbiew","Locia","DonutEsser","gras3369","Giovanka","Neejie","Giovanka","Yuids","Demon_08ITA","ChunkyPanda3000","Spritedrx","Arychu", "Vclx","Vasply","aweya","1Hwok","H1ghLucy","D6G","Shhort","miculona","smallpawz","Kssqlf","Koha","feersz","VUUW","Kqiserr","nnex","pixelhorizon1","_BMeCTe_","Tsoht","laaurin_","CyberTux0","lesblian","Womec","1Hwek","bluby","xhinqueLM","ohVelo_","Rydenz","nosotras","vuave","awnxi","Zswy","starchuii","Neivyy","xXFokusiakXx","kicry","Straight","Forgetting","SID_PLAYZONE","Sohpie","Mcblue2080XD","AnKoyunCuk","HazelovS","Hibiikii","natclie","_UvU","Sohpie","LeleBosss","_UvU","VencislavVulka","Un_Der_Bar","EgirlWise","Tenboudai","—","GrabbeadoPorDepp","roobwy","Casus2","vuave","Misunderstanding","Sohpie","lluumii"];
-	// let tab = [];
-	// let max = 30;
-	// let inster = setInterval(() => {
-	// 	const rand1 = players[Math.floor(Math.random() * 100) % (players.length - 1)];
-	// 	ws.send(JSON.stringify({
-	// 		type: "log",
-	// 		action: "connect",
-	// 		affected: [rand1]
-	// 	}));
-
-	// 	tab.push(rand1);
-	// 	if (tab.length === 30) {
-	// 		clearInterval(inster);
-	// 	}
-	// }, 200);
-
-	// setTimeout(() => {
-	// 	let i = 0;
-	// 	inster = setInterval(() => {
-	// 		ws.send(JSON.stringify({
-	// 			type: "log",
-	// 			action: "disconnect",
-	// 			affected: [tab[i]]
-	// 		}));
-
-	// 		i++;
-	// 		if (i === 30) {
-	// 			clearInterval(inster);
-	// 		}
-	// 	}, 200);
-	// }, 6500);
-
 	try {
 		initData(uuid);
 	}
@@ -233,4 +215,4 @@ function handler(ws, req)
 }
 
 module.exports.handler = handler;
-// module.exports.dispatch_error = dispatch_error;
+module.exports.sendMaxPlayers = sendMaxPlayers;

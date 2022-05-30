@@ -5,6 +5,7 @@ const time			= require('./utils/time.js');
 const colors		= require('./utils/colors.js');
 const response		= require('./utils/response.js');
 const config		= require('../config.js');
+const websocket		= require('./websocket.js');
 const spawn			= require('child_process').spawn;
 
 // const _null = {
@@ -299,8 +300,12 @@ async function updatePlayersOnline()
 	if (ret === "error") {
 		return { state: "error" };
 	}
+	let tmp_maxPlayersOnline = maxPlayersOnline;
 	maxPlayersOnline = 0;
-	return { state: "success" };
+	return {
+		state: "success",
+		maxPlayersOnline: tmp_maxPlayersOnline,
+	};
 }
 
 async function initWebsocketData()
@@ -438,6 +443,7 @@ setInterval(async() => {
 	const ret = updatePlayersOnline();
 	if (ret.state !== "error") {
 		logs.info("Players online history successfully created.");
+		websocket.sendMaxPlayers(ret);
 	}
 }, 60000);
 

@@ -143,5 +143,5 @@ SELECT pg_catalog.setval('public.server_uptime_id_seq', 57, true);
 ALTER TABLE ONLY public.logtime_history ADD CONSTRAINT logtime_history_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.players_logtime ADD CONSTRAINT players_logtime_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.players_online ADD CONSTRAINT players_online_pkey PRIMARY KEY (id);
-ALTER TABLE ONLY public.players_session ADD CONSTRAINT players_sessions_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.players_sessions ADD CONSTRAINT players_sessions_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.server_uptime ADD CONSTRAINT uptime_pkey PRIMARY KEY (id);
