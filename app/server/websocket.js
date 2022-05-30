@@ -53,7 +53,7 @@ let playersConnected = [];
 async function collect()
 {
 	const ret = await data.dataCollector();
-	if (ret.state === "error") {
+	if (ret.state === "error" || ret.state == "partial") {
 		return ;
 	}
 
@@ -72,7 +72,7 @@ async function collect()
 		serverStatus = ret.serverStatus;
 	}
 	if (serverStatus.online !== ret.serverStatus.online) {
-		sendUptime(data)
+		sendUptime(ret)
 	}
 }
 

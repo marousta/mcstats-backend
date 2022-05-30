@@ -162,6 +162,11 @@ async function dataCollector()
 		};
 	}
 
+	// waiting for server to respond
+	if (data.status === false && serverOnline === false) {
+		return { state: "partial" };
+	}
+
 	if (serverOnline === true && data.player_names.length !== playersConnected.length) {
 		let ret = await newSessions(data);
 		if (ret.state === "error") {
