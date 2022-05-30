@@ -1,9 +1,24 @@
-const colors = require("./colors.js");
-const time = require("./time.js");
+const colors	= require("./colors.js");
+const time		= require("./time.js");
+const utils		= require("./utils.js");
 
-function logError(text)
+function logFatal(text)
 {
-	console.log("%s[ERROR]%s %s%s%s", colors.red, colors.end, colors.yellow, time.getTime("log"), colors.end, text);
+	const message = utils.getFunctionAndLine();
+	console.log("%s[FATAL]%s %s%s%s", colors.red, colors.end, colors.yellow, time.getTime("log"), colors.end, message);
+	console.log("                            " + text);
+	process.exit(1);
+}
+
+function logError(text, debug = true)
+{
+	if (debug) {
+		const message = utils.getFunctionAndLine();
+		console.log("%s[ERROR]%s %s%s%s", colors.red, colors.end, colors.yellow, time.getTime("log"), colors.end, message);
+		console.log("                            " + text);
+	} else {
+		console.log("%s[ERROR]%s %s%s%s", colors.red, colors.end, colors.yellow, time.getTime("log"), colors.end, text);
+	}
 }
 
 function logWarning(text)
@@ -22,6 +37,7 @@ function logSql(text)
 }
 
 module.exports = {
+	fatal: logFatal,
 	error: logError,
 	warning: logWarning,
 	info: logInfo,

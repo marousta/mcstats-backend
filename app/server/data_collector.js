@@ -3,7 +3,7 @@ const utils			= require('./utils/utils.js');
 const logs			= require('./utils/logs.js');
 const time			= require('./utils/time.js');
 const colors		= require('./utils/colors.js');
-const responseCheck	= require('./utils/response.js');
+const response		= require('./utils/response.js');
 const config		= require('../config.js');
 const spawn			= require('child_process').spawn;
 
@@ -30,13 +30,11 @@ function fetchData(exec, args)
 				let jsonData = JSON.parse(data);
 				resolve(jsonData);
 			} catch {
-				logs.error(["FetchData", "JSON parse error", data]);
-				process.exit();
+				logs.fatal("JSON parse error " + data)
 			}
 		});
 		p.on("error", (e) => {
-			logs.error(["fetchData", "Unable to execute " + exec + " file not found"])
-			process.exit();
+			logs.fatal("Unable to execute " + exec + " file not found")
 		});
 	})
 }
@@ -51,11 +49,11 @@ let serverOnline = false;
 async function updateServerStatus(status)
 {
 	// get previous server status
-	let ret = responseCheck(await pg.getServerStatus(1), "Unable to get server status");
+	let ret = response.sql(await pg.getServerStatus(1), "Unable to get server status");
 	if (ret === "error") {
 		return { state: "error" };
 	} else if (ret === "partial") { // no database entry create one based on current server status
-		ret = responseCheck(await pg.createServerStatus(status), "Unable to create default server status");
+		ret = response.sql(await pg.createServerStatus(status), "Unable to create default server status");
 		if (ret === "error") {
 			return { state: "error" };
 		}
@@ -68,7 +66,7 @@ async function updateServerStatus(status)
 	}
 
 	// server offline in database, updating ..
-	ret = responseCheck(await pg.createServerStatus(true), "Unable to create server status");
+	ret = response.sql(await pg.createServerStatus(true), "Unable to create server status");
 	if (ret === "error") {
 		return { state: "error" };
 	}
@@ -77,7 +75,7 @@ async function updateServerStatus(status)
 
 async function initPlayerConnected()
 {
-	const ret = responseCheck(await pg.getPlayersSessions(), "Unable to init playersConnected");
+	const ret = response.sql(await pg.getPlayersSessions(), "Unable to init playersConnected");
 	if (ret === "error") {
 		process.exit();
 	}
@@ -94,7 +92,7 @@ async function generateReturn(data)
 		player_names = [];
 	}
 
-	const since = responseCheck(await pg.getServerStatus(1), "Unable to get server status");
+	const since = response.sql(await pg.getServerStatus(1), "Unable to get server status");
 	if (since === "error") {
 		return { state: "error" };
 	}
@@ -117,7 +115,7 @@ async function dataCollector()
 	if (playersConnected === null) {
 		await initPlayerConnected();
 		for (const player of playersConnected) {
-			logs.info(`${player} is ${colors.green}connected${colors.end}!`);
+			logs.info(`${player} is ${colors.green}connected${colors.end} based on last data.`);
 		}
 	}
 
@@ -129,7 +127,7 @@ async function dataCollector()
 		serverOnline = true;
 		logs.info(`Server is ${colors.green}up${colors.end}!`);
 
-		let ret = responseCheck(await updateServerStatus(data.status), "Unable to update server status");
+		let ret = response.sql(await updateServerStatus(data.status), "Unable to update server status");
 		if (ret === "error") {
 			return { state: "error" };
 		}
@@ -140,16 +138,17 @@ async function dataCollector()
 		serverOnline = false;
 		logs.info(`Server is ${colors.red}down${colors.end}!`);
 
-		ret = responseCheck(await pg.createServerStatus(false), "Unable to create server status");
+		ret = response.sql(await pg.createServerStatus(false), "Unable to create server status");
 		if (ret === "error") {
 			return { state: "error" };
 		}
 
-		ret = responseCheck(await endSessions(data), "Unable to update logtime and close sessions");
+		ret = response.sql(await endSessions(data), "Unable to update logtime and close sessions");
 		if (ret === "error") {
 			return { state: "error" };
 		}
 
+		// dispatch server disconnected
 		return {
 			state: "success",
 			timestamp: time.getTimestamp(),
@@ -182,6 +181,7 @@ async function dataCollector()
 		maxPlayersOnline = playersOnline;
 	}
 
+	// dispatch new / removed users
 	return await generateReturn(data);
 }
 
@@ -202,7 +202,7 @@ async function newSessions(data)
 	for (const player of diff) {
 		logs.info(`${player} is ${colors.green}connected${colors.end}!`);
 
-		const ret = responseCheck(await pg.createSession(player), "Unable to create session for " + player);
+		const ret = response.sql(await pg.createSession(player), "Unable to create session for " + player);
 		if (ret === "error") {
 			return { state: "error" };
 		}
@@ -220,14 +220,14 @@ function calcLogtime(session, current)
 
 async function createLogtime(username)
 {
-	const session = responseCheck(await pg.getPlayerSession(username), "Unable to get session for " + username);
+	const session = response.sql(await pg.getPlayerSession(username), "Unable to get session for " + username);
 	if (session === "error") {
 		return { state: "error" };
 	}
 
 	let createLogtime = false;
 
-	const logtime = responseCheck(await pg.getLogtime(username), "Unable to get logtime for " + username);
+	const logtime = response.sql(await pg.getLogtime(username), "Unable to get logtime for " + username);
 	if (logtime === "error") {
 		return { state: "error" };
 	} else if (logtime === "empty") {
@@ -239,13 +239,13 @@ async function createLogtime(username)
 	let ret = "error";
 	// No records for current user .. creating one
 	if (createLogtime === true) {
-		ret = responseCheck(await pg.createLogtime(username, newLogtime), "Unable to create logtime for " + username);
+		ret = response.sql(await pg.createLogtime(username, newLogtime), "Unable to create logtime for " + username);
 		if (ret === "error") {
 			return { state: "error" };
 		}
 	} else {
 	// updating existing records
-		ret = responseCheck(await pg.updateLogtime(username, newLogtime), "Unable to update logtime for " + username);
+		ret = response.sql(await pg.updateLogtime(username, newLogtime), "Unable to update logtime for " + username);
 		if (ret === "error") {
 			return { state: "error" };
 		}
@@ -269,12 +269,12 @@ async function endSessions(data)
 	for (const player of diff) {
 		logs.info(`${player} is ${colors.red}disconnected${colors.end}!`);
 
-		let ret = responseCheck(await createLogtime(player), "Unable to compute logtime for " + player);
+		let ret = response.sql(await createLogtime(player), "Unable to compute logtime for " + player);
 		if (ret === "error") {
 			return { state: "error" };
 		}
 
-		ret = responseCheck(await pg.removeSession(player), "Unable to end session for " + player);
+		ret = response.sql(await pg.removeSession(player), "Unable to end session for " + player);
 		if (ret === "error") {
 			return { state: "error" };
 		}
@@ -285,10 +285,12 @@ async function endSessions(data)
 	return { state: "success" };
 }
 
+/////////////////////////////
+
 async function updatePlayersOnline()
 {
 	logs.info(`current: [ ${playersOnline} / 60 ] max: ${maxPlayersOnline}`);
-	const ret = responseCheck(await pg.createPlayersOnline(maxPlayersOnline), "Unable to store player value");
+	const ret = response.sql(await pg.createPlayersOnline(maxPlayersOnline), "Unable to store player value");
 	if (ret === "error") {
 		return { state: "error" };
 	}
@@ -296,24 +298,13 @@ async function updatePlayersOnline()
 	return { state: "success" };
 }
 
-setInterval(async() => {
-	if (time.getTime() !== "00:00") {
-		return ;
-	}
-
-	const ret = updatePlayersOnline();
-	if (ret.state !== "error") {
-		logs.info("Players online history successfully created.");
-	}
-}, 60000);
-
 async function initWebsocketData()
 {
-	const	playersSessions			= responseCheck(await pg.getPlayersSessions()),
-			serverStatus			= responseCheck(await pg.getServerStatus()),
-			playersLogitmesHistory	= responseCheck(await pg.getLogtimeHistory()),
-			playersLogtimesCurrent	= responseCheck(await pg.getLogtimes()),
-			playersOnlineHistory	= responseCheck(await pg.getPlayersOnline());
+	const	playersSessions			= response.sql(await pg.getPlayersSessions()),
+			serverStatus			= response.sql(await pg.getServerStatus()),
+			playersLogitmesHistory	= response.sql(await pg.getLogtimeHistory()),
+			playersLogtimesCurrent	= response.sql(await pg.getLogtimes()),
+			playersOnlineHistory	= response.sql(await pg.getPlayersOnline());
 
 	if (utils.oneOfEachAs("error", playersSessions, serverStatus, playersLogitmesHistory, playersLogtimesCurrent, playersOnlineHistory)) {
 		return { state: "error" };
@@ -360,7 +351,6 @@ async function initWebsocketData()
     //         todayLogtime,
     //     },
     // ]
-
 	// console.log(playersLogitmesHistory);
 	for (const history of playersLogitmesHistory) {
 		for (const i in history.username) {
@@ -431,6 +421,17 @@ async function initWebsocketData()
 // 		{ date: "2022-05-26", maxPlayers: 7 },
 //     ],
 // };
+
+setInterval(async() => {
+	if (time.getTime() !== "00:00") {
+		return ;
+	}
+
+	const ret = updatePlayersOnline();
+	if (ret.state !== "error") {
+		logs.info("Players online history successfully created.");
+	}
+}, 60000);
 
 module.exports.dataCollector = dataCollector;
 module.exports.initWebsocketData = initWebsocketData;

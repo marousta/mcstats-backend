@@ -1,7 +1,5 @@
 const guuid			= require('uuid');
 const data			= require('./data_collector.js');
-const utils			= require('./utils/utils.js');
-const responseCheck	= require('./utils/response.js');
 const logs			= require('./utils/logs.js');
 
 let webclients		= [];

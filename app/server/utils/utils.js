@@ -41,3 +41,14 @@ module.exports.oneOfEachAs = (state, ...args) => {
 	}
 	return false;
 }
+
+module.exports.getFunctionAndLine = (lvl = 3) => {
+	const e = new Error();
+    const frame = e.stack.split("\n")[lvl];
+	const functinName = frame.split(" ")[5];
+    let fileName = frame.split("(")[1].split(")")[0].replaceAll(" ", "\\ ").split(process.env.npm_package_name + "/")[1];
+	if (fileName === undefined) {
+		fileName = frame.split("(")[1].split(")")[0].replaceAll(" ", "\\ ");
+	}
+	return functinName + " " + fileName;
+}

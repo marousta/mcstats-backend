@@ -1,9 +1,8 @@
 const postgres		= require('pg-native');
-const ProgressBar	= require('progress');
 const utils			= require('./utils/utils.js');
 const logs			= require('./utils/logs.js');
 const time			= require('./utils/time.js');
-const responseCheck	= require('./utils/response.js');
+const response		= require('./utils/response.js');
 const config		= require('../config.js').psql;
 
 //Connect to postgresql database
@@ -13,8 +12,7 @@ try {
 	logs.info("Connected to database.");
 }
 catch (e) {
-	logs.error("Unable to connect to postgresql database. Please check configuration or start the server !");
-	process.exit();
+	logs.fatal("Unable to connect to postgresql database. Please check configuration or start the server !");
 }
 
 ///////////////////////////// response
@@ -69,9 +67,8 @@ async function getPlayersSessions()
 		rows = pg.executeSync(transID);
 		return response_success(rows);
 	} catch (e) {
-		logs.error(["getPlayersSessions", "request failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 async function getPlayerSession(username)
@@ -97,9 +94,8 @@ async function getPlayerSession(username)
 		}
 		return response_success(rows[0]);
 	} catch (e) {
-		logs.error(["getPlayerSession", "request failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ////////////// insert
@@ -121,9 +117,8 @@ async function createSession(username)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		logs.error(["createSession", "insert failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ////////////// delete
@@ -144,9 +139,8 @@ async function removeSession(username)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		logs.error(["createSession", "delete failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ///////////////////////////// Logtime
@@ -167,9 +161,8 @@ async function getLogtimes()
 		}
 		return response_success(rows);
 	} catch (e) {
-		logs.error(["getLogtimes", "request failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 async function getLogtime(username)
@@ -195,9 +188,8 @@ async function getLogtime(username)
 		}
 		return response_success(rows[0]);
 	} catch (e) {
-		logs.error(["getLogtime", "request failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ////////////// insert
@@ -219,9 +211,8 @@ async function createLogtime(username, logtime)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		logs.error(["createLogtime", "insert failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ////////////// update
@@ -243,9 +234,8 @@ async function updateLogtime(username, logtime)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		logs.error(["updateLogtime", "insert failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ///////////////////////////// Players online
@@ -266,9 +256,8 @@ async function getPlayersOnline()
 		}
 		return response_success(rows);
 	} catch (e) {
-		logs.error(["getPlayersOnline", "request failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ////////////// insert
@@ -290,9 +279,8 @@ async function createPlayersOnline(value)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		logs.error(["createPlayersOnline", "insert failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ///////////////////////////// Server status
@@ -314,9 +302,8 @@ async function getServerStatus(limit = 0)
 		}
 		return response_success(rows);
 	} catch (e) {
-		logs.error(["getServerStatus", "request failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ////////////// insert
@@ -338,9 +325,8 @@ async function createServerStatus(value)
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		logs.error(["createServerStatus", "insert failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ///////////////////////////// Logtime history
@@ -362,9 +348,8 @@ async function getLogtimeHistory(limit = 0)
 		}
 		return response_success(rows);
 	} catch (e) {
-		logs.error(["getLogtimeHistory", "request failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 ////////////// insert
@@ -373,7 +358,7 @@ async function createLogtimeHistory()
 {
 	const transID = utils.getTransID();
 
-	let ret = responseCheck(await getLogtimes(), "getLogtimes failed");
+	let ret = response.sql(await getLogtimes(), "getLogtimes failed");
 	if (ret === "error") {
 		return response_error();
 	}
@@ -390,9 +375,8 @@ async function createLogtimeHistory()
 		pg.executeSync(transID);
 		return response_success();
 	} catch (e) {
-		logs.error(["createLogtimeHistory", "insert failed", e]);
 		return response_error(e);
-	};
+	}
 }
 
 setInterval(async() => {
@@ -400,7 +384,7 @@ setInterval(async() => {
 		return ;
 	}
 
-	const ret = responseCheck(await createLogtimeHistory());
+	const ret = response.sql(await createLogtimeHistory());
 	if (ret !== "error") {
 		logs.info("Logtime history successfully created.");
 	}
