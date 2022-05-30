@@ -132,16 +132,16 @@ ALTER TABLE ONLY public.logtime_history ALTER COLUMN id SET DEFAULT nextval('pub
 ALTER TABLE ONLY public.players_logtime ALTER COLUMN id SET DEFAULT nextval('public.players_logtime_id_seq'::regclass);
 ALTER TABLE ONLY public.players_online ALTER COLUMN id SET DEFAULT nextval('public.players_online_id_seq'::regclass);
 ALTER TABLE ONLY public.players_sessions ALTER COLUMN id SET DEFAULT nextval('public.players_sessions_id_seq'::regclass);
-ALTER TABLE ONLY public.uptime ALTER COLUMN id SET DEFAULT nextval('public.uptime_id_seq'::regclass);
+ALTER TABLE ONLY public.server_uptime ALTER COLUMN id SET DEFAULT nextval('public.server_uptime_id_seq'::regclass);
 
 SELECT pg_catalog.setval('public.logtime_history_id_seq', 1, false);
 SELECT pg_catalog.setval('public.players_logtime_id_seq', 5, true);
 SELECT pg_catalog.setval('public.players_online_id_seq', 18, true);
 SELECT pg_catalog.setval('public.players_sessions_id_seq', 12, true);
-SELECT pg_catalog.setval('public.uptime_id_seq', 57, true);
+SELECT pg_catalog.setval('public.server_uptime_id_seq', 57, true);
 
 ALTER TABLE ONLY public.logtime_history ADD CONSTRAINT logtime_history_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.players_logtime ADD CONSTRAINT players_logtime_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.players_online ADD CONSTRAINT players_online_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.players_session ADD CONSTRAINT players_sessions_pkey PRIMARY KEY (id);
-ALTER TABLE ONLY public.uptime ADD CONSTRAINT uptime_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.server_uptime ADD CONSTRAINT uptime_pkey PRIMARY KEY (id);

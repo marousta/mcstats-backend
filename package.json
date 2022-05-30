@@ -1,21 +1,21 @@
 {
-	"name": "mcstats-backend",
-	"version": "1.0.0",
-	"description": "",
-	"main": "./app/app.js",
-	"scripts": {
-		"start": "nodejs ./app/app.js",
-		"test": "echo \"Error: no test specified\" && exit 1"
-	},
-	"author": "",
-	"license": "ISC",
-	"dependencies": {
-		"fs": "0.0.1-security",
-		"https": "^1.0.0",
-		"pg-native": "^3.0.0",
-		"progress": "^2.0.3",
-		"utf-8-validate": "^5.0.2",
-		"uuid": "^8.3.2",
-		"ws": "^7.4.3"
-	}
+  "name": "mcstats-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./app/app.js",
+  "scripts": {
+    "start": "nodejs ./app/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fs": "0.0.1-security",
+    "https": "^1.0.0",
+    "pg-native": "^3.0.0",
+    "progress": "^2.0.3",
+    "utf-8-validate": "^5.0.2",
+    "uuid": "^8.3.2",
+    "ws": "^7.4.3"
+  }
 }

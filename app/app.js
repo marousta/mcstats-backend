@@ -1,9 +1,11 @@
 const ws		= require('ws');
 const websocket = require('./server/websocket.js');
-const utils		= require('./server/utils/utils.js');
 const logs		= require('./server/utils/logs.js');
-const config		= require('./config.js');
+const config	= require('./config.js');
 
+if (process.env.npm_package_name === undefined) {
+	logs.warning("Not launched with npm.\n          > npm run start");
+}
 //Create websocket bind to the webserver
 const wss = new ws.Server({ port: config.port });
 
