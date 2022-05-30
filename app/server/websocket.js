@@ -137,6 +137,15 @@ function dispatch(message)
 	}
 }
 
+function logConnectedPeers()
+{
+	if (connected_peers > 1) {
+		logs.info(connected_peers + " actives websockets");
+	} else {
+		logs.info(connected_peers + " active websocket");
+	}
+}
+
 function handler(ws, req)
 {
 	const uuid = guuid.v4();
@@ -148,6 +157,7 @@ function handler(ws, req)
 	console.log("[%s] IP: %s", uuid.substr(0, 10), webclients[uuid].ip);
 
 	connected_peers++;
+	logConnectedPeers();
 
 	////////////////////////////
 
@@ -173,6 +183,8 @@ function handler(ws, req)
 	ws.on("close", (ws) => {
 		// clearInterval(inster);
 		console.log("[%s] %sended%s", uuid.substr(0, 10), "\x1b[31m", "\x1b[0m");
+		connected_peers--;
+		logConnectedPeers();
 	})
 
 	////////////////////////////
