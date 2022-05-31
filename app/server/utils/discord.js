@@ -1,4 +1,3 @@
-const config				= require("../../config.js");
 const { Client, Intents }	= require('discord.js');
 
 const discord_bot = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS] });
@@ -9,11 +8,11 @@ let channel = null;
 
 module.exports.setPingUser = async() => {
 	let members = await guild.members.fetch();
-	pingUser = members.map(u => u.user.tag === config.discord.user ? u : null)[0];
+	pingUser = members.map(u => u.user.tag === process.env.discordUser ? u : null)[0];
 	if (pingUser === undefined) {
 		return {
 			state: "error",
-			message: "Discord user " + config.discord.user + " not found",
+			message: "Discord user " + process.env.discordUser + " not found",
 		};
 	}
 	return { state: "success" };
@@ -23,11 +22,11 @@ module.exports.setChannel = async() => {
 	let channels = await guild.channels.fetch();
 	channels = channels.filter((c) => c.type === "GUILD_TEXT");
 	channels = [...channels.values()];
-	channel = channels.filter(c => c.name === config.discord.channel ? discord_bot.channels.cache.get(c.id) : null)[0];
+	channel = channels.filter(c => c.name === process.env.discordChannel ? discord_bot.channels.cache.get(c.id) : null)[0];
 	if (channel === undefined) {
 		return {
 			state: "error",
-			message: "Discord channel " + config.discord.channel + " not found",
+			message: "Discord channel " + process.env.discordChannel + " not found",
 		};
 	}
 	return { state: "success" };
@@ -47,7 +46,7 @@ module.exports.init = async() => {
 		});
 	});
 
-	discord_bot.login(config.discord.token);
+	discord_bot.login(process.env.discordToken);
 	return await ret;
 }
 

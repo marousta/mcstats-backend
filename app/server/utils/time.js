@@ -30,7 +30,7 @@ module.exports.getDate = class {
 	constructor (timestamp)
 	{
 		if (timestamp === undefined) {
-			logs.fatal("undefined value timestamp");
+			throw new Error("undefined value timestamp");
 		}
 		this.time = timestamp;
 		this.d = new Date(timestamp * 1000);
@@ -74,7 +74,7 @@ module.exports.getDate = class {
 		return this.date.d + " " + this.months[this.date.m] + " " + this.date.y + " - " + this.format.time() + this.format.meridiem();
 	}
 
-	date()
+	lite()
 	{
 		return this.date.d + " " + this.months[this.date.m] + " " + this.date.y;
 	}

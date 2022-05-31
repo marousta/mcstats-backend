@@ -41,11 +41,14 @@ let serverStatus = null;
 
 function sendUptime(data)
 {
+	let label = new time.getDate(data.timestamp);
+	label = label.full();
+
 	let message = {
 		type: "graph",
 		affected: "uptime",
 		data: [
-			{ data: data.serverStatus.online, label: new time.getDate(data.timestamp).date() }
+			{ data: data.serverStatus.online, label: label }
 		]
 	}
 	dispatch(message);

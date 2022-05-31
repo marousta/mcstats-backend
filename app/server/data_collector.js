@@ -4,7 +4,6 @@ const logs			= require('./utils/logs.js');
 const time			= require('./utils/time.js');
 const colors		= require('./utils/colors.js');
 const response		= require('./utils/response.js');
-const config		= require('../config.js');
 const websocket		= require('./websocket.js');
 const spawn			= require('child_process').spawn;
 
@@ -120,7 +119,7 @@ async function dataCollector()
 		}
 	}
 
-	const data = await fetchData(config.execPath, [config.serverURL]);
+	const data = await fetchData(process.env.execPath, [process.env.serverURL]);
 	// console.log(data);
 
 	// check server status and create new status if it was previously offline

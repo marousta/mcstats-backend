@@ -1,7 +1,6 @@
 const colors	= require("./colors.js");
 const time		= require("./time.js");
 const utils		= require("./utils.js");
-const config	= require("../../config.js");
 const discord	= require("./discord.js");
 
 async function logFatal(text)
@@ -55,7 +54,7 @@ module.exports = {
 };
 
 module.exports.discordInit = async() => {
-	if (config.discord.token === undefined || config.discord.token === "") {
+	if (process.env.discordToken === undefined || process.env.discordToken === "") {
 		logDiscord("Disabled");
 		return ;
 	}

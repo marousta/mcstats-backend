@@ -3,10 +3,10 @@ const utils			= require('./utils/utils.js');
 const logs			= require('./utils/logs.js');
 const time			= require('./utils/time.js');
 const response		= require('./utils/response.js');
-const config		= require('../config.js').psql;
 
 //Connect to postgresql database
 const pg = new postgres();
+const config = `postgresql://${process.env.postgresUser}:${process.env.postgresPassword}@${process.env.postgresHost}/${process.env.postgresDatabase}?${process.env.postgresOptions}`;
 try {
 	pg.connectSync(config);
 	logs.info("Connected to database.");
