@@ -4,7 +4,7 @@ const utils		= require("./utils.js");
 const config	= require("../../config.js");
 
 let discordSend = () => {};
-if (config.discord !== undefined || config.discord !== "") {
+if (config.discord.token !== undefined && config.discord.token !== "") {
 	logDiscord("Login in..");
 	discordSend = require("./discord.js");
 }
