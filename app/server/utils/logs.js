@@ -2,19 +2,14 @@ const colors	= require("./colors.js");
 const time		= require("./time.js");
 const utils		= require("./utils.js");
 const config	= require("../../config.js");
-
-let discordSend = () => {};
-if (config.discord.token !== undefined && config.discord.token !== "") {
-	logDiscord("Login in..");
-	discordSend = require("./discord.js");
-}
+const discord	= require("./discord.js");
 
 async function logFatal(text)
 {
 	const message = utils.getFunctionAndLine();
 	console.log("%s[FATAL]%s %s%s%s", colors.red, colors.end, colors.yellow, time.getTime("log"), colors.end, message);
 	console.log("                            " + text);
-	await discordSend("[FATAL] " + message + "\n" + text);
+	await discord.send("[FATAL] " + message + "\n" + text);
 	process.exit(1);
 }
 
@@ -27,7 +22,7 @@ async function logError(text, debug = true)
 	} else {
 		console.log("%s[ERROR]%s %s%s%s", colors.red, colors.end, colors.yellow, time.getTime("log"), colors.end, text);
 	}
-	await discordSend("[ERROR] " + message + "\n" + text);
+	await discord.send("[ERROR] " + message + "\n" + text);
 }
 
 function logWarning(text)
@@ -58,3 +53,30 @@ module.exports = {
 	sql: logSql,
 	discord: logDiscord,
 };
+
+module.exports.discordInit = async() => {
+	if (config.discord.token === undefined || config.discord.token === "") {
+		logDiscord("Disabled");
+		return ;
+	}
+
+	logDiscord("Login in..");
+	const init = await discord.init();
+	if (init.state === "error") {
+		logFatal(init.message);
+	}
+	logDiscord("Logged");
+	const pingUser = await discord.setPingUser();
+	if (pingUser.state === "error") {
+		logFatal(pingUser.message);
+	}
+	const channel = await discord.setChannel();
+	if (channel.state === "error") {
+		logFatal(channel.message);
+	}
+	const test = await discord.test();
+	if (test.state === "error") {
+		logFatal(test.message);
+	}
+	logDiscord("Ready");
+}

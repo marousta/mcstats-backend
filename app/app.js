@@ -6,6 +6,10 @@ const config	= require('./config.js');
 if (process.env.npm_package_name === undefined) {
 	logs.warning("Not launched with npm.\n          > npm run start");
 }
+
+//Init discord bot log miroir
+logs.discordInit();
+
 //Create websocket bind to the webserver
 const wss = new ws.Server({ port: config.port });
 
