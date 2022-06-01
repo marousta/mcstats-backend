@@ -71,5 +71,6 @@ module.exports.send = async(message) => {
 	return await channel.send(`
 		${pingUser}
 		\`\`\`CS\n${message}\`\`\`
-	`);
+	`).then(msg => { return { state: "true" }; })
+	.catch(e => { console.log(e); return { state: "error" }; });
 }
