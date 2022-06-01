@@ -145,3 +145,6 @@ ALTER TABLE ONLY public.players_logtime ADD CONSTRAINT players_logtime_pkey PRIM
 ALTER TABLE ONLY public.players_online ADD CONSTRAINT players_online_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.players_sessions ADD CONSTRAINT players_sessions_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.server_uptime ADD CONSTRAINT uptime_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.players_logtime ADD CONSTRAINT players_logtime_ukey UNIQUE (username);
+ALTER TABLE ONLY public.players_sessions ADD CONSTRAINT players_sessions_ukey UNIQUE (username);
