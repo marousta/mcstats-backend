@@ -5,6 +5,7 @@ const discord_bot = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.G
 let guild = null;
 let pingUser = null;
 let channel = null;
+let last = null;
 
 module.exports.setPingUser = async() => {
 	let members = await guild.members.fetch();
@@ -63,11 +64,12 @@ module.exports.test = async() => {
 }
 
 module.exports.send = async(message) => {
-	if (channel === null || pingUser === null) {
+	if (channel === null || pingUser === null || last === message) {
 		return;
 	}
+	last = message;
 	return await channel.send(`
 		${pingUser}
-		\`\`\`${message}\`\`\`
+		\`\`\`CS\n${message}\`\`\`
 	`);
 }
