@@ -205,12 +205,11 @@ async function newSessions(data)
 
 	let diff = player_names.filter(x => !playersConnected.includes(x));
 	for (const player of diff) {
-		logs.info(`${player} is ${colors.green}connected${colors.end}!`);
-
 		const ret = response.sql(await pg.createSession(player), "Unable to create session for " + player);
 		if (ret === "error") {
 			return { state: "error" };
 		}
+		logs.info(`${player} is ${colors.green}connected${colors.end}!`);
 	}
 
 	return { state: "success" };
@@ -272,8 +271,6 @@ async function endSessions(data)
 
 	let diff = playersConnected.filter(x => !player_names.includes(x));
 	for (const player of diff) {
-		logs.info(`${player} is ${colors.red}disconnected${colors.end}!`);
-
 		let ret = response.sql(await createLogtime(player), "Unable to compute logtime for " + player);
 		if (ret === "error") {
 			return { state: "error" };
@@ -283,6 +280,8 @@ async function endSessions(data)
 		if (ret === "error") {
 			return { state: "error" };
 		}
+
+		logs.info(`${player} is ${colors.red}disconnected${colors.end}!`);
 	}
 
 	playersConnected = player_names.filter(x => !playersConnected.includes(x));
