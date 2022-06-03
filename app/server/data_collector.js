@@ -336,26 +336,31 @@ async function initWebsocketData()
     //         { up, down },
     //     ],
     // }
-	for (let i in serverStatus) {
-		let session = {
-			up: 0,
+	if (serverStatus === "empty") {
+		ret.uptime.sessions.push({
+			up: time.getTimestamp(),
 			down: 0,
-		}
-		if (i === 0 && serverStatus[i].value === true) {
-			session.down = 0;
-			session.up = serverStatus[i].itime;
-		} else {
-			if (serverStatus[i + 1]) {
-				session.down = serverStatus[i].itime;
-				session.up = serverStatus[++i].itime;
-			} else {
-				session.down = 0;
-				session.up = serverStatus[i].itime;
+		});
+	} else {
+		for (let i = 0; i < serverStatus.length; i++) {
+			let session = {
+				up: 0,
+				down: 0,
 			}
+			if (i == 0 && serverStatus[i].value === false) {
+				continue;
+			} else if (serverStatus[i + 1]) {
+				session.up = serverStatus[i].itime;
+				session.down = serverStatus[++i].itime;
+			} else {
+				session.up = serverStatus[i].itime;
+				session.down = 0;
+			}
+			session.up = parseInt(session.up);
+			session.down = parseInt(session.down);
+			ret.uptime.sessions.push(session);
 		}
-		ret.uptime.sessions.push(session);
 	}
-
 	// players: [
     //     {
     //         username,
@@ -365,25 +370,37 @@ async function initWebsocketData()
     //         todayLogtime,
     //     },
     // ]
-	// console.log(playersLogitmesHistory);
 	for (const history of playersLogitmesHistory) {
 		for (const i in history.username) {
 			const username = history.username[i];
-			const duplicate = ret.players.filter(x => x.username === username)
-			if (duplicate.length !== 0) {
+			// skip duplicate username of each days
+			const duplicate = ret.players.filter(x => x.username === username);
+			if (duplicate.length != 0) {
 				continue;
 			}
+
 			let player = {
 				username: username,
 				data: [],
-				todayLogtime: playersSessions.length !== 0 ? calcLogtime(playersSessions, history.logtime[i]) : history.logtime[i],
+				todayLogtime: 0,
 			};
+
 			for (const x in playersLogitmesHistory) {
+				const logtime = playersLogitmesHistory[x].logtime[i];
 				player.data.push({
 					date: playersLogitmesHistory[x].itime,
-					logtime: playersLogitmesHistory[x].logtime[i],
+					logtime: logtime ? parseInt(logtime) : 0,
 				});
 			};
+			const todayLogtime = () => {
+				const logtimeHistory = player.data[player.data.length - 1];
+				const find = playersSessions.filter(s => s.username === username);
+				if (find.length == 1) {
+					return calcLogtime(find[0], logtimeHistory);
+				}
+				return logtimeHistory.logtime;
+			}
+			player.todayLogtime = todayLogtime();
 			ret.players.push(player);
 		}
 	}
