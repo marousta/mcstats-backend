@@ -14,6 +14,7 @@ function check(variable)
 check("websocketPort");
 check("minecraftHost");
 check("minecraftQueryPort");
+check("queryRetry");
 check("postgresHost");
 check("postgresUser");
 check("postgresPassword");

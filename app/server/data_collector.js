@@ -41,6 +41,7 @@ let playersConnected = null;
 let playersOnline = 0;
 let maxPlayersOnline = 0;
 let serverOnline = null;
+let serverRetry = 0;
 
 async function updateServerStatus(status)
 {
@@ -118,17 +119,12 @@ async function dataCollector()
 	const data = await fetchData();
 	// console.log(data);
 
-	if (data.status !== serverOnline) {
-		if (data.status === true) {
-			logs.info(`Server is ${colors.green}up${colors.end}!`);
-		} else {
-			logs.info(`Server is ${colors.red}down${colors.end}!`);
-		}
-	}
-
 	// check server status and create new status if it was previously offline
 	if ((data.status === true && serverOnline === false) || (data.status === true && serverOnline === null)) {
+		serverRetry = 0;
 		serverOnline = true;
+
+		logs.info(`Server is ${colors.green}up${colors.end}!`);
 
 		let ret = response.sql(await updateServerStatus(true), "Unable to create server status"); //todo
 		if (ret === "error") {
@@ -136,9 +132,18 @@ async function dataCollector()
 		}
 	}
 
+	if (data.status === false && serverOnline === true && serverRetry != parseInt(process.env.queryRetry))
+	{
+		serverRetry++;
+		logs.warning(`Server not responding`);
+		return { state: "partial" };
+	}
 	// server offline closing sessions and updating logtimes
-	if ((data.status === false && serverOnline === true) || (data.status === false && serverOnline === null)) {
+	if (data.status === false && serverRetry == parseInt(process.env.queryRetry)) {
+		serverRetry = 0;
 		serverOnline = false;
+
+		logs.info(`Server is ${colors.red}down${colors.end}!`);
 
 		ret = response.sql(await updateServerStatus(false), "Unable to create server status"); //todo
 		if (ret === "error") {
