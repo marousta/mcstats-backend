@@ -49,7 +49,7 @@ let serverOnline = null;
 async function updateServerStatus(status)
 {
 	// get previous server status
-	let ret = response.sql(await pg.getServerStatus(1), "Unable to get server status");
+	let ret = response.sql(await pg.getServerStatus(1, "DESC"), "Unable to get server status");
 	if (ret === "error") {
 		return { state: "error" };
 	} else if (ret === "partial") { // no database entry create one based on current server status
@@ -65,8 +65,8 @@ async function updateServerStatus(status)
 		return { state: "success" };
 	}
 
-	// server offline in database, updating ..
-	ret = response.sql(await pg.createServerStatus(true), "Unable to create server status");
+	// server status differ from database, updating ..
+	ret = response.sql(await pg.createServerStatus(status), "Unable to create server status");
 	if (ret === "error") {
 		return { state: "error" };
 	}
@@ -134,7 +134,7 @@ async function dataCollector()
 	if ((data.status === true && serverOnline === false) || (data.status === true && serverOnline === null)) {
 		serverOnline = true;
 
-		let ret = response.sql(await updateServerStatus(data.status), "Unable to update server status");
+		let ret = response.sql(await updateServerStatus(true), "Unable to create server status"); //todo
 		if (ret === "error") {
 			return { state: "error" };
 		}
@@ -144,7 +144,7 @@ async function dataCollector()
 	if ((data.status === false && serverOnline === true) || (data.status === false && serverOnline === null)) {
 		serverOnline = false;
 
-		ret = response.sql(await pg.createServerStatus(false), "Unable to create server status");
+		ret = response.sql(await updateServerStatus(false), "Unable to create server status"); //todo
 		if (ret === "error") {
 			return { state: "error" };
 		}

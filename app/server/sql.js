@@ -286,7 +286,7 @@ async function createPlayersOnline(value)
 ///////////////////////////// Server status
 ////////////// get
 
-async function getServerStatus(limit = 0)
+async function getServerStatus(limit = 0, order = "ASC")
 {
 	const transID = utils.getTransID();
 
@@ -294,7 +294,7 @@ async function getServerStatus(limit = 0)
 		pg.prepareSync(transID, `
 			SELECT itime, value
 			FROM public.server_uptime
-			ORDER BY id DESC ${limit ? "LIMIT " + limit : ""}
+			ORDER BY id ${order} ${limit ? "LIMIT " + limit : ""}
 		`);
 		rows = pg.executeSync(transID);
 		if (rows.length === 0) {
