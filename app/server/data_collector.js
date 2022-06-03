@@ -366,6 +366,7 @@ async function initWebsocketData()
     //         todayLogtime,
     //     },
     // ]
+	// from history in database
 	for (const history of playersLogitmesHistory) {
 		for (const i in history.username) {
 			const username = history.username[i];
@@ -399,6 +400,28 @@ async function initWebsocketData()
 			player.todayLogtime = todayLogtime();
 			ret.players.push(player);
 		}
+	}
+	// from today new values not in history
+	for (const logtime of playersLogtimesCurrent) {
+		const username = logtime.username;
+		const duplicate = ret.players.filter(x => x.username === username);
+		if (duplicate.length != 0) {
+			continue;
+		}
+		let player = {
+			username: username,
+			data: [],
+			todayLogtime: 0,
+		};
+		const todayLogtime = () => {
+			const find = playersSessions.filter(s => s.username === username);
+			if (find.length == 1) {
+				return calcLogtime(find[0], logtime);
+			}
+			return logtime.logtime;
+		}
+		player.todayLogtime = todayLogtime();
+		ret.players.push(player);
 	}
 
 	// daily: [
