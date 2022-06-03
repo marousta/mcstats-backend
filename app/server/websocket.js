@@ -75,9 +75,10 @@ async function collect()
 	playersConnected = ret.connected;
 
 	if (serverStatus === null) {
-		serverStatus = ret.serverStatus;
+		serverStatus = ret.serverStatus.online;
 	}
-	if (serverStatus.online !== ret.serverStatus.online) {
+	if (serverStatus !== ret.serverStatus.online) {
+		serverStatus = ret.serverStatus.online
 		sendUptime(ret)
 	}
 }
