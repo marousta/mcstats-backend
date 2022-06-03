@@ -154,6 +154,7 @@ async function getLogtimes()
 		pg.prepareSync(transID, `
 			SELECT username, logtime
 			FROM public.players_logtime
+			ORDER by username
 		`);
 		rows = pg.executeSync(transID);
 		if (rows.length === 0) {
@@ -420,7 +421,7 @@ function RESETDATABASE()
 			logs.warning("Reset complete!");
 			process.exit(0);
 		}
-	}, 7500)
+	}, 7500);
 }
 
 // RESETDATABASE();
