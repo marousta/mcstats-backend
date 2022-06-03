@@ -20,16 +20,15 @@ if (process.env.npm_package_name === undefined) {
 logs.discordInit();
 
 //Create websocket bind to the webserver
-const wss = new ws.Server({ port: process.env.port });
+const wss = new ws.Server({ port: process.env.websocketPort });
 
 //Websocket listen for clients connections
 wss.on('connection', websocket.handler);
 
 logs.info("Server started.");
-logs.info("listening port : " + process.env.port);
+logs.info("listening port : " + process.env.websocketPort);
 logs.info("Waiting for peers..");
-logs.info(`scraping from executable "${process.env.execPath}"`);
-logs.info(`          with parameter "${process.env.serverURL}"`);
+logs.info(`requesting data from "${process.env.minecraftHost}:${process.env.minecraftQueryPort}"`);
 
 process.on('SIGINT', () => {
 	console.log();

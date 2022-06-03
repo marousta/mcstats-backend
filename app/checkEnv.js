@@ -11,12 +11,12 @@ function check(variable)
 	}
 }
 
-check("port");
-check("execPath");
-check("serverURL");
+check("websocketPort");
+check("minecraftHost");
+check("minecraftQueryPort");
+check("postgresHost");
 check("postgresUser");
 check("postgresPassword");
-check("postgresHost");
 check("postgresDatabase");
 check("postgresOptions");
 

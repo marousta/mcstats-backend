@@ -5,38 +5,34 @@ const time			= require('./utils/time.js');
 const colors		= require('./utils/colors.js');
 const response		= require('./utils/response.js');
 const websocket		= require('./websocket.js');
-const spawn			= require('child_process').spawn;
+const mc			= require('minecraft-server-util');
 
-// const _null = {
-// 	status: true,
-// 	version: 'Paper 1.18.2',
-// 	protocol: 758,
-// 	description: 'cube',
-// 	players_online: 0,
-// 	max_players: 60,
-// 	player_names: []
-// };
 
 /////////////////////////////
 
-function fetchData(exec, args)
+async function fetchData()
 {
-	return new Promise((resolve) => {
-		let p = spawn(exec, args);
+	let query = await mc.queryFull(process.env.minecraftHost, parseInt(process.env.minecraftQueryPort))
+						.then(result => {
+							return { status: true, ...result};
+						})
+						.catch(error => {
+							logs.mc(error.message);
+							return { status: false };
+						});
 
-		p.stdout.setEncoding('utf8');
-		p.stdout.on('data', (data) => {
-			try {
-				let jsonData = JSON.parse(data);
-				resolve(jsonData);
-			} catch {
-				logs.fatal("JSON parse error " + data)
-			}
-		});
-		p.on("error", (e) => {
-			logs.fatal("Unable to execute " + exec + " file not found")
-		});
-	})
+	if (query.status === false) {
+		return { status: false };
+	}
+
+	return {
+		status: true,
+		version: query.version,
+		software: query.software,
+		players_online: query.players.online,
+		max_players: query.players.max,
+		player_names: query.players.list,
+	};
 }
 
 ///////////////////////////// init
@@ -119,7 +115,7 @@ async function dataCollector()
 		}
 	}
 
-	const data = await fetchData(process.env.execPath, [process.env.serverURL]);
+	const data = await fetchData();
 	// console.log(data);
 
 	if (data.status !== serverOnline) {

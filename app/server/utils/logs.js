@@ -44,6 +44,11 @@ function logDiscord(text)
 	console.log("%s[Discord]%s %s", colors.pink, colors.end, text);
 }
 
+function logMc(text)
+{
+	console.log("%s[MC Util]%s %s", colors.green, colors.end, text);
+}
+
 module.exports = {
 	fatal: logFatal,
 	error: logError,
@@ -51,6 +56,7 @@ module.exports = {
 	info: logInfo,
 	sql: logSql,
 	discord: logDiscord,
+	mc: logMc,
 };
 
 module.exports.discordInit = async() => {
