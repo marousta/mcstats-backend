@@ -1,3 +1,5 @@
+const fs = require('fs');
+
 const { error } = require("./server/utils/logs.js");
 
 let missing = false;
@@ -16,11 +18,14 @@ check("minecraftHost");
 check("minecraftQueryPort");
 check("queryRetry");
 check("postgresHost");
+check("postgresPort");
 check("postgresUser");
 check("postgresPassword");
 check("postgresDatabase");
-check("postgresOptions");
 
 if (missing === true) {
+	if (fs.existsSync(".env") === false) {
+		console.log(".env file not found create it with .env.template");
+	}
 	process.exit(1);
 }

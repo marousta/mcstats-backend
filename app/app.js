@@ -1,12 +1,6 @@
-const fs = require('fs');
 require('dotenv').config();
 
-if (fs.existsSync(".env") === false) {
-	console.log(".env file not found create it with .env.template");
-	process.exit(1);
-} else {
-	require("./checkEnv.js");
-}
+require("./checkEnv.js");
 
 const ws		= require('ws');
 const websocket = require('./server/websocket.js');

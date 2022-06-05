@@ -181,30 +181,14 @@ function handler(ws, req)
 	////////////////////////////
 
 	ws.on("message", (msg) => {
-		try {
-			let requested = JSON.parse(msg);
-
-			console.log("[%s] recevied : \"%s\"", uuid.substr(0, 10), msg);
-			clearTimeout(client_timeout[uuid]);
-			switch (requested.state)
-			{
-				// case "test"			: TESTCHART(ws); break;
-				case "keep alive"	: ws.send(JSON.stringify({keepalive: 1})); break;
-				case "close"		: ws.close(); break;
-			}
-			client_alive_timeout(ws, uuid);
-		}
-		catch (e) {
-			logs.error(["websocket_recevied", msg]);
-		}
-	})
+		clearTimeout(client_timeout[uuid]);
+	});
 
 	ws.on("close", (ws) => {
-		// clearInterval(inster);
 		console.log("[%s] %sended%s", uuid.substr(0, 10), "\x1b[31m", "\x1b[0m");
 		connected_peers--;
 		logConnectedPeers();
-	})
+	});
 
 	////////////////////////////
 
@@ -213,7 +197,6 @@ function handler(ws, req)
 	}
 	catch (e) {
 		logs.error(e);
-		ws.send("error");
 		ws.close();
 	}
 }
