@@ -91,7 +91,7 @@ async function getPlayerSession(username)
 		if (rows.length > 1) {
 			throw Error("multiple user with the same name");
 		}
-		if (rows.length === 0) {
+		if (rows.length == 0) {
 			return response_partial("No session found for " + username);
 		}
 		return response_success(rows[0]);
@@ -159,7 +159,7 @@ async function getLogtimes()
 			ORDER by username
 		`);
 		rows = pg.executeSync(transID);
-		if (rows.length === 0) {
+		if (rows.length == 0) {
 			return response_partial("No logtime found");
 		}
 		return response_success(rows);
@@ -186,7 +186,7 @@ async function getLogtime(username)
 		if (rows.length > 1) {
 			throw Error("multiple user with the same name");
 		}
-		if (rows.length === 0) {
+		if (rows.length == 0) {
 			return response_partial("No logtime found for " + username);
 		}
 		return response_success(rows[0]);
@@ -254,7 +254,7 @@ async function getPlayersOnline()
 			FROM public.players_online
 		`);
 		rows = pg.executeSync(transID);
-		if (rows.length === 0) {
+		if (rows.length == 0) {
 			return response_partial("No player online data found");
 		}
 		return response_success(rows);
@@ -300,7 +300,7 @@ async function getServerStatus(limit = 0, order = "ASC")
 			ORDER BY id ${order} ${limit ? "LIMIT " + limit : ""}
 		`);
 		rows = pg.executeSync(transID);
-		if (rows.length === 0) {
+		if (rows.length == 0) {
 			return response_partial("No server data found");
 		}
 		return response_success(rows);
@@ -346,7 +346,7 @@ async function getLogtimeHistory(limit = 0)
 			ORDER BY id ASC
 		`);
 		rows = pg.executeSync(transID);
-		if (rows.length === 0) {
+		if (rows.length == 0) {
 			return response_partial("No logtime history found");
 		}
 		return response_success(rows);
@@ -364,6 +364,9 @@ async function createLogtimeHistory()
 	let ret = response.sql(await getLogtimes(), "getLogtimes failed");
 	if (ret === "error") {
 		return response_error();
+	}
+	if (ret === "empty") {
+		return response_partial();
 	}
 
 	let username = utils.stringifyArraySQL( utils.extractJSON(ret, "username") );
@@ -433,9 +436,13 @@ setInterval(async() => {
 		return ;
 	}
 
-	const ret = response.sql(await createLogtimeHistory());
-	if (ret !== "error") {
+	const ret = await createLogtimeHistory();
+	if (ret.state === "success") {
 		logs.info("Logtime history successfully created.");
+	} else if (ret.state === "empty") {
+		logs.info("No Logtime data to create logtime history.");
+	} else {
+		logs.warning("Failed to update logtime history.");
 	}
 }, 60000);
 
