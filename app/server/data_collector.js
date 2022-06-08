@@ -140,6 +140,7 @@ async function dataCollector()
 		serverRetry = 0;
 		serverOnline = true;
 
+		process.stdout.write("\033[2K");
 		logs.info(`Server is ${colors.green}up${colors.end}!`);
 
 		let ret = response.sql(await updateServerStatus(true), "Unable to create server status"); //todo

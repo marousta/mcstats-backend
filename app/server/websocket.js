@@ -59,6 +59,9 @@ let playersConnected = [];
 async function collect()
 {
 	const ret = await data.dataCollector();
+
+	logs.lastQuery();
+
 	if (ret.state === "error" || ret.state == "partial") {
 		return ;
 	}

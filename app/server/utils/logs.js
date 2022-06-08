@@ -1,3 +1,4 @@
+const fs		= require("fs");
 const colors	= require("./colors.js");
 const time		= require("./time.js");
 const utils		= require("./utils.js");
@@ -49,6 +50,12 @@ function logMc(text)
 	console.log("%s[MC Util]%s %s", colors.green, colors.end, text);
 }
 
+function lastQuery()
+{
+	const content = "last query: " + time.getTime("log") + "\n";
+	fs.writeFileSync("last_query.log", content);
+}
+
 module.exports = {
 	fatal: logFatal,
 	error: logError,
@@ -57,6 +64,7 @@ module.exports = {
 	sql: logSql,
 	discord: logDiscord,
 	mc: logMc,
+	lastQuery: lastQuery,
 };
 
 module.exports.discordInit = async() => {
