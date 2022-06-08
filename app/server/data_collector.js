@@ -9,6 +9,22 @@ const mc			= require('minecraft-server-util');
 
 /////////////////////////////
 
+async function fetchBedrockVersion()
+{
+	let query = await mc.queryFull(process.env.minecraftBedrockHost, parseInt(process.env.minecraftBedrockPort), { timeout: 3000 })
+						.then(result => {
+							return { status: true, ...result};
+						})
+						.catch(error => {
+							logs.mc("fetchBedrockVersion: " + error.message);
+							return { status: false };
+						});
+	if (query.status === true) {
+		const version = query.version.split(" ")[2];
+		mcBedrockVersion = version;
+	}
+}
+
 async function fetchData()
 {
 	let query = await mc.queryFull(process.env.minecraftHost, parseInt(process.env.minecraftQueryPort), { timeout: 3000 })
@@ -41,6 +57,9 @@ let playersOnline = 0;
 let maxPlayersOnline = 0;
 let serverOnline = false;
 let serverRetry = 0;
+let mcVersion = null;
+let mcBedrockVersion = null;
+fetchBedrockVersion();
 
 async function updateServerStatus(status)
 {
@@ -189,6 +208,7 @@ async function dataCollector()
 		await initPlayerConnected();
 	}
 
+	mcVersion = data.version;
 	// playersOnline++
 	playersOnline = data.player_names.length;
 	if (maxPlayersOnline < playersOnline) {
@@ -329,6 +349,7 @@ async function initWebsocketData()
 
 	let ret = {
 		type: "init",
+		version: [mcVersion, mcBedrockVersion],
 		uptime: { sessions: [] },
 		players: [],
 		daily: []
@@ -480,6 +501,8 @@ async function initWebsocketData()
 // };
 
 setInterval(async() => {
+	fetchBedrockVersion();
+
 	const t = time.getTime().split(":")
 	const hours = parseInt(t[0]);
 	const mins = parseInt(t[1]);
