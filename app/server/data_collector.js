@@ -7,12 +7,11 @@ const response		= require('./utils/response.js');
 const websocket		= require('./websocket.js');
 const mc			= require('minecraft-server-util');
 
-
 /////////////////////////////
 
 async function fetchData()
 {
-	let query = await mc.queryFull(process.env.minecraftHost, parseInt(process.env.minecraftQueryPort))
+	let query = await mc.queryFull(process.env.minecraftHost, parseInt(process.env.minecraftQueryPort), { timeout: 3000 })
 						.then(result => {
 							return { status: true, ...result};
 						})
@@ -117,10 +116,27 @@ async function dataCollector()
 	}
 
 	const data = await fetchData();
-	// console.log(data);
+	// const data = { status: false };
+	// console.log({
+	// 	playersConnected: playersConnected,
+	// 	playersOnline: playersOnline,
+	// 	maxPlayersOnline: maxPlayersOnline,
+	// 	serverOnline: serverOnline,
+	// 	serverRetry: serverRetry,
+	// });
+
+	// log first state
+	if (data.status === false && serverOnline === null) {
+		serverOnline = false;
+		logs.info(`Server is ${colors.red}down${colors.end}!`);
+	}
+	if (data.status === true && serverOnline === null) {
+		serverOnline = true;
+		logs.info(`Server is ${colors.green}up${colors.end}!`);
+	}
 
 	// check server status and create new status if it was previously offline
-	if ((data.status === true && serverOnline === false) || (data.status === true && serverOnline === null)) {
+	if ((data.status === true && serverOnline === false)) {
 		serverRetry = 0;
 		serverOnline = true;
 
@@ -132,6 +148,7 @@ async function dataCollector()
 		}
 	}
 
+	// retrying request n times
 	if (data.status === false && serverOnline === true && serverRetry != parseInt(process.env.queryRetry))
 	{
 		serverRetry++;
@@ -170,7 +187,7 @@ async function dataCollector()
 	}
 
 	// waiting for server to respond
-	if (data.status === false && serverOnline === false) {
+	if ((data.status === false && serverOnline === false)) {
 		return { state: "partial" };
 	}
 
