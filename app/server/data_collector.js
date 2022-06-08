@@ -39,7 +39,7 @@ async function fetchData()
 let playersConnected = null;
 let playersOnline = 0;
 let maxPlayersOnline = 0;
-let serverOnline = null;
+let serverOnline = false;
 let serverRetry = 0;
 
 async function updateServerStatus(status)
@@ -116,24 +116,6 @@ async function dataCollector()
 	}
 
 	const data = await fetchData();
-	// const data = { status: false };
-	// console.log({
-	// 	playersConnected: playersConnected,
-	// 	playersOnline: playersOnline,
-	// 	maxPlayersOnline: maxPlayersOnline,
-	// 	serverOnline: serverOnline,
-	// 	serverRetry: serverRetry,
-	// });
-
-	// log first state
-	if (data.status === false && serverOnline === null) {
-		serverOnline = false;
-		logs.info(`Server is ${colors.red}down${colors.end}!`);
-	}
-	if (data.status === true && serverOnline === null) {
-		serverOnline = true;
-		logs.info(`Server is ${colors.green}up${colors.end}!`);
-	}
 
 	// check server status and create new status if it was previously offline
 	if ((data.status === true && serverOnline === false)) {
@@ -191,6 +173,8 @@ async function dataCollector()
 	if ((data.status === false && serverOnline === false)) {
 		return { state: "partial" };
 	}
+
+	serverRetry = 0;
 
 	if (serverOnline === true && data.player_names.length !== playersConnected.length) {
 		let ret = await newSessions(data);
