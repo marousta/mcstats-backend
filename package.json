@@ -5,6 +5,7 @@
   "main": "./app/app.js",
   "scripts": {
     "start": "node ./app/app.js",
+	"debug": "node ./app/standalone.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

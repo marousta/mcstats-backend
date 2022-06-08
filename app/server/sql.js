@@ -385,52 +385,6 @@ async function createLogtimeHistory()
 	}
 }
 
-// for development purposes only, use as your own risk
-function deleteTable(table)
-{
-	const transID = utils.getTransID();
-
-	try {
-		pg.prepareSync(transID, `
-			DELETE FROM public.${table}
-		`);
-		pg.executeSync(transID);
-		logs.warning(table);
-		return response_success();
-	} catch (e) {
-		logs.error("delete failed for " + table);
-		return response_error(e);
-	};
-}
-
-function RESETDATABASE()
-{
-	let i = 0;
-	let ticker = setInterval(() => {
-		logs.warning("RESETDATABASE is ENABLED");
-		if (++i === 7) {
-			clearInterval(ticker);
-		}
-	}, 1000);
-	setTimeout(async() => {
-		logs.warning("Reset in progress..");
-
-		let ret = [
-			response.sql(await deleteTable("logtime_history")),
-			response.sql(await deleteTable("players_logtime")),
-			response.sql(await deleteTable("players_online")),
-			response.sql(await deleteTable("players_sessions")),
-			response.sql(await deleteTable("server_uptime")),
-		];
-		if (utils.oneOfEachAs("error", ret) === false) {
-			logs.warning("Reset complete!");
-			process.exit(0);
-		}
-	}, 7500);
-}
-
-// RESETDATABASE();
-
 setInterval(async() => {
 	if (time.getTime() !== "00:00") {
 		return ;
@@ -463,3 +417,23 @@ module.exports.createPlayersOnline = createPlayersOnline;
 
 module.exports.getServerStatus = getServerStatus;
 module.exports.createServerStatus = createServerStatus;
+
+// for development / debug purposes only
+function deleteTable(table)
+{
+	const transID = utils.getTransID();
+
+	try {
+		pg.prepareSync(transID, `
+			DELETE FROM public.${table}
+		`);
+		pg.executeSync(transID);
+		logs.info("Deleted " + table);
+		return response_success();
+	} catch (e) {
+		logs.error("delete failed for " + table);
+		return response_error(e);
+	};
+}
+
+module.exports.deleteTable = deleteTable;
