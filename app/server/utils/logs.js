@@ -52,7 +52,7 @@ function logMc(text)
 
 function lastQuery()
 {
-	const content = "last query: " + time.getTime("log") + "\n";
+	const content = "last query: " + time.getTime("log");
 	fs.writeFileSync("last_query.log", content);
 }
 

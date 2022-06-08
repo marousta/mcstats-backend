@@ -8,6 +8,7 @@ if (process.env.npm_package_name === undefined) {
 	logs.warning("Not launched with npm.\n          > npm run start");
 }
 
+const fs		= require("fs");
 const utils		= require('./server/utils/utils.js');
 const response	= require('./server/utils/response.js');
 
@@ -39,9 +40,27 @@ function RESETDATABASE()
 	}, 7500);
 }
 
+async function tail(file)
+{
+	if (!fs.existsSync(file)) {
+		logs.error("last_query.log not found", false);
+		process.exit(1);
+	}
+	let last = null;
+	setInterval(() => {
+		let content = fs.readFileSync(file).toString();
+		if (content != last) {
+			process.stdout.write(content + "\r");
+		}
+		last = content;
+	}, 1000);
+}
+
 switch (process.argv[2])
 {
 	case "resetdatabase" :	RESETDATABASE();
+							break;
+	case "querytime" :		tail("last_query.log");
 							break;
 	default :	logs.error("command not found", false);
 				process.exit(1);
