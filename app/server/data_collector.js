@@ -430,37 +430,57 @@ async function initWebsocketData()
 		}
 	}
 	// from today new values not in history
-	for (const logtime of playersLogtimesCurrent) {
-		const username = logtime.username;
-		const duplicate = ret.players.filter(x => x.username === username);
-		if (duplicate.length != 0) {
-			continue;
-		}
-		let player = {
-			username: username,
-			data: [],
-			todayLogtime: 0,
-		};
-		const todayLogtime = () => {
-			const find = playersSessions.filter(s => s.username === username);
-			if (find.length == 1) {
-				return calcLogtime(find[0], logtime);
+	if (playersLogtimesCurrent !== "empty") {
+		for (const logtime of playersLogtimesCurrent) {
+			const username = logtime.username;
+			const duplicate = ret.players.filter(x => x.username === username);
+			if (duplicate.length != 0) {
+				continue;
 			}
-			return logtime.logtime;
+			let player = {
+				username: username,
+				data: [],
+				todayLogtime: 0,
+			};
+			const todayLogtime = () => {
+				const find = playersSessions.filter(s => s.username === username);
+				if (find.length == 1) {
+					return calcLogtime(find[0], logtime);
+				}
+				return logtime.logtime;
+			}
+			player.todayLogtime = todayLogtime();
+			ret.players.push(player);
 		}
-		player.todayLogtime = todayLogtime();
-		ret.players.push(player);
+	}
+	// form currently connected player not in history
+	if (playersSessions !== "empty") {
+		for (const session of playersSessions) {
+			const username = session.username;
+			const duplicate = ret.players.filter(x => x.username === username);
+			if (duplicate.length != 0) {
+				continue;
+			}
+			let player = {
+				username: username,
+				data: [],
+				todayLogtime: time.getTimestamp() - session.connection_time,
+			};
+			ret.players.push(player);
+		}
 	}
 
 	// daily: [
 	// 	{ date, maxPlayers },
     // ]
-	for (const data of playersOnlineHistory) {
-		let daily = {
-			date: data.itime,
-			maxPlayers: data.value,
-		};
-		ret.daily.push(daily);
+	if (playersOnlineHistory !== "empty") {
+		for (const data of playersOnlineHistory) {
+			let daily = {
+				date: data.itime,
+				maxPlayers: data.value,
+			};
+			ret.daily.push(daily);
+		}
 	}
 
 	return {
@@ -469,36 +489,6 @@ async function initWebsocketData()
 		playersConnected: playersSessions.length !== 0 ? utils.extractJSON(playersSessions, "username") : [],
 	};
 }
-
-// const t = {
-//     type: "init",
-//     uptime: {
-//         sessions: [
-//             {
-//                 up: 135236146,
-// 				down: 2352523,
-//             },
-//             {
-//                 up: 135236146,
-//                 down: 2352523,
-//             }
-//         ],
-//     },
-//     players: [
-//         {
-//             username: "toon_lien",
-//             data: [
-//                 { date: "2022-05-25", logtime: 50 },
-//                 { date: "2022-05-26", logtime: 30 },
-//             ],
-//             todayLogtime: 10
-//         },
-//     ],
-//     daily: [
-// 		{ date: "2022-05-25", maxPlayers: 10 },
-// 		{ date: "2022-05-26", maxPlayers: 7 },
-//     ],
-// };
 
 setInterval(async() => {
 	fetchBedrockVersion();
