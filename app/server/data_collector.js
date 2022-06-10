@@ -6,17 +6,18 @@ const colors		= require('./utils/colors.js');
 const response		= require('./utils/response.js');
 const websocket		= require('./websocket.js');
 const mc			= require('minecraft-server-util');
+const rconClient	= require("rcon-client").Rcon;
 
 /////////////////////////////
 
-async function fetchBedrockVersion()
+async function fetchBedrockInfos()
 {
 	let query = await mc.queryFull(process.env.minecraftBedrockHost, parseInt(process.env.minecraftBedrockPort), { timeout: 3000 })
 						.then(result => {
 							return { status: true, ...result};
 						})
 						.catch(error => {
-							logs.mc("fetchBedrockVersion: " + error.message);
+							logs.mc("fetchBedrockInfos: " + error.message);
 							return { status: false };
 						});
 	if (query.status === true) {
@@ -25,29 +26,68 @@ async function fetchBedrockVersion()
 	}
 }
 
-async function fetchData()
+async function fetchJavaInfos()
 {
 	let query = await mc.queryFull(process.env.minecraftHost, parseInt(process.env.minecraftQueryPort), { timeout: 3000 })
 						.then(result => {
 							return { status: true, ...result};
 						})
 						.catch(error => {
-							logs.mc(error.message);
+							logs.mc("fetchJavaInfos: " + error.message);
 							return { status: false };
 						});
 
-	if (query.status === false) {
-		return { status: false };
+	if (query.status === true) {
+		mcVersion = query.version;
 	}
+}
 
-	return {
-		status: true,
-		version: query.version,
-		software: query.software,
-		players_online: query.players.online,
-		max_players: query.players.max,
-		player_names: query.players.list,
-	};
+let rcon = null;
+
+async function fetchPlayers()
+{
+	try {
+		if (rcon === null) {
+			rcon = await rconClient.connect({
+				host: process.env.minecraftHost,
+				port: process.env.minecraftRconPort,
+				password: process.env.minecraftRconPassword
+			});
+		}
+	} catch(e) {
+		if (e.message.includes("ECONNREFUSED") === false) {
+			logs.error(e.message);
+		}
+	}
+	try {
+		if (rcon === null) {
+			return { status: false };
+		}
+		let response = await rcon.send("list");
+		// [There are 2 of a max of 60 players online]: [NellenShalyu, NellenShalyu1]
+		// [NellenShalyu], [NellenShalyu1] || ['']
+		players = response.split(": ")[1];
+		if (players.includes("of a max of 60 players online")
+		|| players.includes("Started tick profiling")
+		|| players.includes("Stopped tick profiling")) {
+			logs.RCON("hot fixed");
+			return await fetchPlayers();
+		}
+		players = players.split(", ");
+		players = players.filter(x => x !== "");
+
+		return {
+			status: true,
+			player_names: players
+		};
+	} catch (e) {
+		if (e.message === "Not connected") {
+			rcon = null;
+		} else {
+			logs.error(e.message);
+		}
+	}
+	return { status: false };
 }
 
 ///////////////////////////// init
@@ -57,9 +97,11 @@ let playersOnline = 0;
 let maxPlayersOnline = 0;
 let serverOnline = false;
 let serverRetry = 0;
+
 let mcVersion = null;
 let mcBedrockVersion = null;
-fetchBedrockVersion();
+fetchJavaInfos();
+fetchBedrockInfos();
 
 async function updateServerStatus(status)
 {
@@ -134,7 +176,7 @@ async function dataCollector()
 		}
 	}
 
-	const data = await fetchData();
+	const data = await fetchPlayers();
 
 	// check server status and create new status if it was previously offline
 	if ((data.status === true && serverOnline === false)) {
@@ -208,7 +250,6 @@ async function dataCollector()
 		await initPlayerConnected();
 	}
 
-	mcVersion = data.version;
 	// playersOnline++
 	playersOnline = data.player_names.length;
 	if (maxPlayersOnline < playersOnline) {
@@ -491,7 +532,8 @@ async function initWebsocketData()
 }
 
 setInterval(async() => {
-	fetchBedrockVersion();
+	fetchJavaInfos();
+	fetchBedrockInfos();
 
 	const t = time.getTime().split(":")
 	const hours = parseInt(t[0]);

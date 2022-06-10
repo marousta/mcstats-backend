@@ -50,6 +50,11 @@ function logMc(text)
 	console.log("[%s] %s[MC Util]%s %s", time.getTime("log"), colors.green, colors.end, text);
 }
 
+function logRCON(text)
+{
+	console.log("[%s] %s[RCON]%s %s", time.getTime("log"), colors.green, colors.end, text);
+}
+
 function lastQuery()
 {
 	const content = "last query: " + time.getTime("log");
@@ -64,6 +69,7 @@ module.exports = {
 	sql: logSql,
 	discord: logDiscord,
 	mc: logMc,
+	RCON: logRCON,
 	lastQuery: lastQuery,
 };
 
