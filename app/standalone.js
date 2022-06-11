@@ -43,8 +43,7 @@ function RESETDATABASE()
 async function tail(file)
 {
 	if (!fs.existsSync(file)) {
-		logs.error("last_query.log not found", false);
-		process.exit(1);
+		logs.fatal("last_query.log not found", false);
 	}
 	let last = null;
 	setInterval(() => {
@@ -62,6 +61,5 @@ switch (process.argv[2])
 							break;
 	case "querytime" :		tail("last_query.log");
 							break;
-	default :	logs.error("command not found", false);
-				process.exit(1);
+	default :	logs.fatal("command not found", false);
 }

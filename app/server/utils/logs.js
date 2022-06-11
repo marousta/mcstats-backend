@@ -4,11 +4,18 @@ const time		= require("./time.js");
 const utils		= require("./utils.js");
 const discord	= require("./discord.js");
 
-async function logFatal(text)
+async function logFatal(text, debug = true)
 {
-	const message = utils.getFunctionAndLine();
+	let message = "";
+	if (debug) {
+		message = utils.getFunctionAndLine();
+	}
 	console.log("[%s] %s[FATAL]%s %s", time.getTime("log"), colors.red, colors.end, message);
-	console.log("                            " + text);
+	console.log();
+	console.log("\t" + text);
+	if (text[text.length - 1] !== "\n") {
+		console.log();
+	}
 	await discord.send("[FATAL] " + message + "\n" + text);
 	process.exit(1);
 }
@@ -18,7 +25,11 @@ async function logError(text, debug = true)
 	const message = utils.getFunctionAndLine();
 	if (debug) {
 		console.log("[%s] %s[ERROR]%s %s", time.getTime("log"), colors.red, colors.end, message);
-		console.log("                            " + text);
+		console.log();
+		console.log("\t" + text);
+		if (text[text.length - 1] !== "\n") {
+			console.log();
+		}
 	} else {
 		console.log("[%s] %s[ERROR]%s %s", time.getTime("log"), colors.red, colors.end, text);
 	}

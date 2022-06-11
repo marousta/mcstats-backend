@@ -12,9 +12,7 @@ try {
 	logs.info("Connected to database.");
 }
 catch (e) {
-	logs.error(config);
-	logs.error(e.message);
-	logs.fatal("Unable to connect to postgresql database.");
+	logs.fatal(`config: ${config}\n\n\t${e.message}\n\tUnable to connect to postgresql database.`);
 }
 
 ///////////////////////////// response
