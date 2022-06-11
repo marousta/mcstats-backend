@@ -17,7 +17,10 @@ async function fetchBedrockInfos()
 							return { status: true, ...result};
 						})
 						.catch(error => {
-							logs.mc("fetchBedrockInfos: " + error.message);
+							if (error.message.includes("received 0") === false
+							&& error.message.includes("Timed out") === false) {
+								logs.mc("fetchBedrockInfos: " + error.message);
+							}
 							return { status: false };
 						});
 	if (query.status === true) {
@@ -33,7 +36,10 @@ async function fetchJavaInfos()
 							return { status: true, ...result};
 						})
 						.catch(error => {
-							logs.mc("fetchJavaInfos: " + error.message);
+							if (error.message.includes("received 0") === false
+							&& error.message.includes("Timed out") === false) {
+								logs.mc("fetchJavaInfos: " + error.message);
+							}
 							return { status: false };
 						});
 
