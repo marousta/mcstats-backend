@@ -11,6 +11,7 @@ if (process.env.npm_package_name === undefined) {
 const fs		= require("fs");
 const utils		= require('./server/utils/utils.js');
 const response	= require('./server/utils/response.js');
+const rconClient= require("rcon-client").Rcon;
 
 function RESETDATABASE()
 {
@@ -40,10 +41,11 @@ function RESETDATABASE()
 	}, 7500);
 }
 
-async function tail(file)
+async function tailFile(file)
 {
 	if (!fs.existsSync(file)) {
-		logs.fatal("last_query.log not found", false);
+		logs.error("last_query.log not found", false);
+		process.exit(1);
 	}
 	let last = null;
 	setInterval(() => {
@@ -55,11 +57,82 @@ async function tail(file)
 	}, 1000);
 }
 
+let rcon = null;
+
+async function fetchRCON(cmd)
+{
+	try {
+		if (rcon === null) {
+			rcon = await rconClient.connect({
+				host: process.env.minecraftHost,
+				port: process.env.minecraftRconPort,
+				password: process.env.minecraftRconPassword
+			});
+		}
+	} catch(e) {
+		if (e.message.includes("ECONNREFUSED") === false) {
+			logs.error(e.message);
+		}
+	}
+	try {
+		if (rcon === null) {
+			return { status: false };
+		}
+		let response = await rcon.send(cmd);
+		return {
+			status: true,
+			value: response
+		};
+	} catch (e) {
+		if (e.message === "Not connected") {
+			rcon = null;
+		} else {
+			logs.error(e.message);
+		}
+	}
+	return { status: false };
+}
+
+let state = null;
+
+async function tailTPS()
+{
+	let response = await fetchRCON("debug start");
+	setTimeout(async() => {
+		if (response.status === false) {
+			return;
+		}
+
+		response = await fetchRCON("debug stop");
+		if (response.status === false) {
+			return;
+		}
+
+		value = parseFloat(response.value.split(" (")[1]);
+		process.stdout.write("  " + value + " tps\r");
+
+		setTimeout(() => {
+			tailTPS();
+		}, 3000);
+	}, 10000);
+}
+
 switch (process.argv[2])
 {
 	case "resetdatabase" :	RESETDATABASE();
 							break;
-	case "querytime" :		tail("last_query.log");
+	case "querytime" :		tailFile("last_query.log");
 							break;
-	default :	logs.fatal("command not found", false);
+	case "tps" :			state = "tps";
+							tailTPS();
+							break;
+	default :	logs.error("command not found", false);
+				process.exit(1);
 }
+
+process.on('SIGINT', async() => {
+	if (state === "tps") {
+		await fetchRCON("debug stop");
+	}
+	process.exit();
+});
