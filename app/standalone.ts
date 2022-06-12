@@ -1,21 +1,22 @@
 require('dotenv').config();
 
-require("./checkEnv.js");
-
-const logs = require('./server/utils/logs.js');
+import { env } from '$env';
+import { logs } from '$utils/logs';
 
 if (process.env.npm_package_name === undefined) {
-	logs.warning("Not launched with npm.\n          > npm run start");
+	logs.warning("Not launched with npm.\n\n\t> npm run start\n");
 }
 
-const fs		= require("fs");
-const utils		= require('./server/utils/utils.js');
-const response	= require('./server/utils/response.js');
-const rconClient= require("rcon-client").Rcon;
+import * as fs from "fs";
+import * as rconClient from 'rcon-client';
+
+import * as utils from '$utils/utils';
+import * as response from '$utils/response';
+import type { defaultFalseResponse, defaultTrueResponse } from '$types';
 
 function RESETDATABASE()
 {
-	const pg = require('./server/sql.js');
+	const pg = require('$server/sql');
 
 	let i = 0;
 	let ticker = setInterval(() => {
@@ -41,13 +42,13 @@ function RESETDATABASE()
 	}, 7500);
 }
 
-async function tailFile(file)
+async function tailFile(file: string)
 {
 	if (!fs.existsSync(file)) {
 		logs.error("last_query.log not found", false);
 		process.exit(1);
 	}
-	let last = null;
+	let last: string | null = null;
 	setInterval(() => {
 		let content = fs.readFileSync(file).toString();
 		if (content != last) {
@@ -57,19 +58,19 @@ async function tailFile(file)
 	}, 1000);
 }
 
-let rcon = null;
+let rcon: rconClient.Rcon | null = null;
 
-async function fetchRCON(cmd)
+async function fetchRCON(cmd: string): Promise<defaultTrueResponse | defaultFalseResponse>
 {
 	try {
 		if (rcon === null) {
-			rcon = await rconClient.connect({
-				host: process.env.minecraftHost,
-				port: process.env.minecraftRconPort,
-				password: process.env.minecraftRconPassword
+			rcon = await rconClient.Rcon.connect({
+				host: env.minecraftHost,
+				port: env.minecraftRconPort,
+				password: env.minecraftRconPassword
 			});
 		}
-	} catch(e) {
+	} catch(e: any) {
 		if (e.message.includes("ECONNREFUSED") === false) {
 			logs.error(e.message);
 		}
@@ -83,7 +84,7 @@ async function fetchRCON(cmd)
 			status: true,
 			value: response
 		};
-	} catch (e) {
+	} catch (e: any) {
 		if (e.message === "Not connected") {
 			rcon = null;
 		} else {
@@ -93,7 +94,7 @@ async function fetchRCON(cmd)
 	return { status: false };
 }
 
-let state = null;
+let state: string | null = null;
 
 async function tailTPS()
 {
@@ -108,7 +109,7 @@ async function tailTPS()
 			return;
 		}
 
-		value = parseFloat(response.value.split(" (")[1]);
+		const value = parseFloat((response.value as string).split(" (")[1]);
 		process.stdout.write("  " + value + " tps\r");
 
 		setTimeout(() => {

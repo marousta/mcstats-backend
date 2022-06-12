@@ -2,3 +2,4 @@ node_modules
 dist
 .env
 last_query.log
+build

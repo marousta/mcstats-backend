@@ -1,10 +1,13 @@
-const fs		= require("fs");
-const colors	= require("./colors.js");
-const time		= require("./time.js");
-const utils		= require("./utils.js");
-const discord	= require("./discord.js");
+import * as fs from 'fs';
 
-async function logFatal(text, debug = true)
+import { env } from '$env';
+import { colors } from '$types';
+
+import * as time from '$utils/time';
+import * as utils from '$utils/utils';
+import * as discord	from '$utils/discord';
+
+async function logFatal(text: string, debug = true)
 {
 	let message = "";
 	if (debug) {
@@ -20,7 +23,7 @@ async function logFatal(text, debug = true)
 	process.exit(1);
 }
 
-async function logError(text, debug = true)
+async function logError(text: string, debug = true)
 {
 	const message = utils.getFunctionAndLine();
 	if (debug) {
@@ -36,32 +39,32 @@ async function logError(text, debug = true)
 	await discord.send("[ERROR] " + message + "\n" + text);
 }
 
-function logWarning(text)
+function logWarning(text: string)
 {
 	console.log("[%s] %s[WARNING]%s %s", time.getTime("log"), colors.yellow, colors.end, text);
 }
 
-function logInfo(text)
+function logInfo(text: string)
 {
 	console.log("[%s] %s[INFO]%s %s", time.getTime("log"), colors.blue, colors.end, text);
 }
 
-function logSql(text)
+function logSql(text: string)
 {
 	console.log("[%s] %s[SQL]%s %s", time.getTime("log"), colors.pink, colors.end, text);
 }
 
-function logDiscord(text)
+function logDiscord(text: string)
 {
 	console.log("[%s] %s[Discord]%s %s", time.getTime("log"), colors.pink, colors.end, text);
 }
 
-function logMc(text)
+function logMc(text: string)
 {
 	console.log("[%s] %s[MC Util]%s %s", time.getTime("log"), colors.green, colors.end, text);
 }
 
-function logRCON(text)
+function logRCON(text: string)
 {
 	console.log("[%s] %s[RCON]%s %s", time.getTime("log"), colors.green, colors.end, text);
 }
@@ -72,7 +75,7 @@ function lastQuery()
 	fs.writeFileSync("last_query.log", content);
 }
 
-module.exports = {
+export const logs = {
 	fatal: logFatal,
 	error: logError,
 	warning: logWarning,
@@ -84,8 +87,9 @@ module.exports = {
 	lastQuery: lastQuery,
 };
 
-module.exports.discordInit = async() => {
-	if (process.env.discordToken === undefined || process.env.discordToken === "") {
+export async function discordInit()
+{
+	if (env.discordToken === undefined || env.discordToken === "") {
 		logDiscord("Disabled");
 		return ;
 	}

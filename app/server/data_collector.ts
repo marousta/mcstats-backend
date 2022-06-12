@@ -1,67 +1,77 @@
-const pg			= require('./sql.js');
-const utils			= require('./utils/utils.js');
-const logs			= require('./utils/logs.js');
-const time			= require('./utils/time.js');
-const colors		= require('./utils/colors.js');
-const response		= require('./utils/response.js');
-const websocket		= require('./websocket.js');
-const mc			= require('minecraft-server-util');
-const rconClient	= require("rcon-client").Rcon;
+import * as mc from 'minecraft-server-util';
+import * as rconClient from 'rcon-client';
+
+import { colors, DataCollected, FullQueryTrueResponse, defaultFalseResponse, defaultTrueResponse, IwebsocketData, ErrorResponse, SuccessResponse, PartialResponse, IsessionUptime, IplayersHistory, MaxPlayersOnlineResponse, InitDataReponse } from '$types';
+import { env } from '$env';
+import * as utils from '$utils/utils';
+import { logs } from '$utils/logs';
+import * as time from '$utils/time';
+import * as response from '$utils/response';
+import * as websocket from '$server/websocket';
+import * as pg from '$server/sql';
 
 /////////////////////////////
 
 async function fetchBedrockInfos()
 {
-	let query = await mc.queryFull(process.env.minecraftBedrockHost, parseInt(process.env.minecraftBedrockPort), { timeout: 3000 })
+	let query: FullQueryTrueResponse | defaultFalseResponse = await mc.queryFull(env.minecraftBedrockHost, env.minecraftBedrockPort, { timeout: 3000 })
 						.then(result => {
 							return { status: true, ...result};
 						})
 						.catch(error => {
-							if (error.message.includes("received 0") === false
-							&& error.message.includes("Timed out") === false) {
+							if (!error.message.includes("received 0") // UDP timeout ignore
+							&& !error.message.includes("Timed out")) {
 								logs.mc("fetchBedrockInfos: " + error.message);
 							}
 							return { status: false };
 						});
-	if (query.status === true) {
+	if (query.status) {
 		const version = query.version.split(" ")[2];
-		mcBedrockVersion = version;
+		if (mcBedrockVersion != version) {
+			mcBedrockVersion = version;
+			websocket.sendVersion(mcVersion, mcBedrockVersion);
+			logs.mc("Bedrock version updated!");
+		}
 	}
 }
 
 async function fetchJavaInfos()
 {
-	let query = await mc.queryFull(process.env.minecraftHost, parseInt(process.env.minecraftQueryPort), { timeout: 3000 })
+	let query: FullQueryTrueResponse | defaultFalseResponse = await mc.queryFull(env.minecraftHost, env.minecraftQueryPort, { timeout: 3000 })
 						.then(result => {
 							return { status: true, ...result};
 						})
 						.catch(error => {
-							if (error.message.includes("received 0") === false
-							&& error.message.includes("Timed out") === false) {
+							if (!error.message.includes("received 0") // UDP timeout ignore
+							&& !error.message.includes("Timed out")) {
 								logs.mc("fetchJavaInfos: " + error.message);
 							}
 							return { status: false };
 						});
 
-	if (query.status === true) {
-		mcVersion = query.version;
+	if (query.status) {
+		if (mcVersion != query.version) {
+			mcVersion = query.version;
+			websocket.sendVersion(mcVersion, mcBedrockVersion);
+			logs.mc("Java version updated!");
+		}
 	}
 }
 
-let rcon = null;
+let rcon: rconClient.Rcon | null = null;
 
-async function fetchPlayers()
+async function fetchPlayers(): Promise<defaultTrueResponse | defaultFalseResponse>
 {
 	try {
 		if (rcon === null) {
-			rcon = await rconClient.connect({
-				host: process.env.minecraftHost,
-				port: process.env.minecraftRconPort,
-				password: process.env.minecraftRconPassword
+			rcon = await rconClient.Rcon.connect({
+				host: env.minecraftHost,
+				port: env.minecraftRconPort,
+				password: env.minecraftRconPassword
 			});
 		}
-	} catch(e) {
-		if (e.message.includes("ECONNREFUSED") === false) {
+	} catch(e: any) {
+		if (!e.message.includes("ECONNREFUSED")) {
 			logs.error(e.message);
 		}
 	}
@@ -69,28 +79,31 @@ async function fetchPlayers()
 		if (rcon === null) {
 			return { status: false };
 		}
-		let response = await rcon.send("list");
-		// [There are 2 of a max of 60 players online]: [NellenShalyu, NellenShalyu1]
-		// [NellenShalyu], [NellenShalyu1] || ['']
-		players = response.split(": ")[1];
+		let response: string = await rcon.send("list");
+		// [There are 2 of a max of 60 players online]: [player1, anotherplayer]
+		// [player1], [anotherplayer] || ['']
+		let players = response.split(": ")[1];
 		if (players.includes("of a max of 60 players online")
 		|| players.includes("Started tick profiling")
 		|| players.includes("Stopped tick profiling")) {
 			logs.RCON("hot fixed");
-			return await fetchPlayers();
+			return fetchPlayers();
 		}
-		players = players.split(", ");
-		players = players.filter(x => x !== "");
 
+		let ret: Array<string> = players.split(", ");
+		ret = ret.filter(x => x !== "");
 		return {
 			status: true,
-			player_names: players
+			value: ret
 		};
-	} catch (e) {
-		if (e.message === "Not connected") {
+	} catch (e: any) {
+		if (e.message === "Not connected") { // server is down
 			rcon = null;
-		} else {
-			logs.error(e.message);
+		} else if (e.message.includes("includes")) { // unknown error
+			logs.warning(e.message);
+		} else if (!e.message.includes("Timeout for packet id") // server is down ignore
+				&& !e.message.includes("EHOSTUNREACH")) {
+			logs.error(e.message); // unhandled error
 		}
 	}
 	return { status: false };
@@ -98,28 +111,32 @@ async function fetchPlayers()
 
 ///////////////////////////// init
 
-let playersConnected = null;
-let playersOnline = 0;
-let maxPlayersOnline = 0;
-let serverOnline = false;
-let serverRetry = 0;
+let playersConnected: Array<string> | null = null;
+let playersOnline: number = 0;
+let maxPlayersOnline: number = 0;
+let serverOnline: boolean = false;
+let serverRetry: number = 0;
 
-let mcVersion = null;
-let mcBedrockVersion = null;
+let mcVersion: string | null = null;
+let mcBedrockVersion: string | null = null;
 fetchJavaInfos();
 fetchBedrockInfos();
 
-async function updateServerStatus(status)
+async function updateServerStatus(status: boolean): Promise<SuccessResponse | ErrorResponse>
 {
 	// get previous server status
 	let ret = response.sql(await pg.getServerStatus(1, "DESC"), "Unable to get server status");
 	if (ret === "error") {
-		return { state: "error" };
+		return { state: "error", message: "" };
 	} else if (ret === "partial") { // no database entry create one based on current server status
 		ret = response.sql(await pg.createServerStatus(status), "Unable to create default server status");
 		if (ret === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
+		websocket.sendUptime({
+			state: status,
+			timestamp: time.getTimestamp(),
+		});
 		return { state: "success" };
 	}
 
@@ -131,8 +148,12 @@ async function updateServerStatus(status)
 	// server status differ from database, updating ..
 	ret = response.sql(await pg.createServerStatus(status), "Unable to create server status");
 	if (ret === "error") {
-		return { state: "error" };
+		return { state: "error", message: "" };
 	}
+	websocket.sendUptime({
+		state: status,
+		timestamp: time.getTimestamp(),
+	});
 	return { state: "success" };
 }
 
@@ -140,24 +161,22 @@ async function initPlayerConnected()
 {
 	const ret = response.sql(await pg.getPlayersSessions(), "Unable to init playersConnected");
 	if (ret === "error") {
-		process.exit();
+		process.exit(1);
 	}
-	playersConnected = utils.extractJSON(ret, "username");
+	else if (ret === "partial") {
+		return [];
+	} else {
+		return utils.extractJSON(ret as Array<string>, "username") as Array<string>;
+	}
 }
 
 ///////////////////////////// dataCollect
 
-async function generateReturn(data)
+async function generateReturn(): Promise<DataCollected | ErrorResponse>
 {
-	// probably overkill here
-	let player_names = data.player_names;
-	if (player_names === undefined) {
-		player_names = [];
-	}
-
 	const since = response.sql(await pg.getServerStatus(1), "Unable to get server status");
 	if (since === "error") {
-		return { state: "error" };
+		return { state: "error", message: "" };
 	}
 
 	return {
@@ -167,59 +186,62 @@ async function generateReturn(data)
 			online: serverOnline,
 			since: since[0].itime,
 		},
-		connected: playersConnected,
+		connected: playersConnected || [],
 		playersOnline: playersOnline,
 		maxPlayersOnline: maxPlayersOnline,
 	};
 }
 
-async function dataCollector()
+export async function dataCollector(): Promise<DataCollected | ErrorResponse | PartialResponse>
 {
 	if (playersConnected === null) {
-		await initPlayerConnected();
-		for (const player of playersConnected) {
-			logs.info(`${player} is ${colors.green}connected${colors.end} based on last data.`);
+		playersConnected = await initPlayerConnected();
+		if (playersConnected) {
+			for (const player of playersConnected) {
+				logs.info(`${player} is ${colors.green}connected${colors.end} based on last data.`);
+			}
 		}
 	}
 
 	const data = await fetchPlayers();
 
+	const player_names = data.status ? data.value as Array<string> : [];
+
 	// check server status and create new status if it was previously offline
-	if ((data.status === true && serverOnline === false)) {
+	if (data.status && !serverOnline) {
 		serverRetry = 0;
 		serverOnline = true;
 
-		process.stdout.write("\033[2K");
 		logs.info(`Server is ${colors.green}up${colors.end}!`);
 
 		let ret = response.sql(await updateServerStatus(true), "Unable to create server status"); //todo
 		if (ret === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
 	}
 
 	// retrying request n times
-	if (data.status === false && serverOnline === true && serverRetry != parseInt(process.env.queryRetry))
+	if (!data.status && serverOnline && serverRetry != env.queryRetry)
 	{
 		serverRetry++;
 		logs.warning(`Server not responding`);
-		return { state: "partial" };
+		return { state: "partial", message: "" };
 	}
 	// server offline closing sessions and updating logtimes
-	if (data.status === false && serverRetry == parseInt(process.env.queryRetry)) {
+	if (!data.status && serverRetry == env.queryRetry) {
 		serverRetry = 0;
 		serverOnline = false;
 
 		logs.info(`Server is ${colors.red}down${colors.end}!`);
 
-		ret = response.sql(await updateServerStatus(false), "Unable to create server status"); //todo
+		let ret = response.ft(await updateServerStatus(false), "Unable to create server status"); //todo
 		if (ret === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
 
-		ret = response.sql(await endSessions(data), "Unable to update logtime and close sessions");
+		ret = response.ft(await endSessions(player_names), "Unable to update logtime and close sessions");
 		if (ret === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
 
 		// dispatch server disconnected
@@ -237,53 +259,59 @@ async function dataCollector()
 	}
 
 	// waiting for server to respond
-	if ((data.status === false && serverOnline === false)) {
-		return { state: "partial" };
+	if (!data.status && !serverOnline) {
+		return { state: "partial", message: "" };
 	}
 
 	serverRetry = 0;
 
-	if (serverOnline === true && data.player_names.length !== playersConnected.length) {
-		let ret = await newSessions(data);
+	if (serverOnline && player_names.length != playersConnected.length) {
+		let ret = await newSessions(player_names);
 		if (ret.state === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
 
-		ret = await endSessions(data);
+		ret = await endSessions(player_names);
 		if (ret.state === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
-		await initPlayerConnected();
+		playersConnected = player_names;
 	}
 
 	// playersOnline++
-	playersOnline = data.player_names.length;
+	playersOnline = player_names.length;
 	if (maxPlayersOnline < playersOnline) {
 		maxPlayersOnline = playersOnline;
 	}
 
 	// dispatch new / removed users
-	return await generateReturn(data);
+	return await generateReturn();
 }
 
 ///////////////////////////// Sessions
 
-async function newSessions(data)
+async function newSessions(player_names: Array<string>): Promise<SuccessResponse | ErrorResponse | PartialResponse>
 {
-	let player_names = data.player_names;
+	if (!playersConnected) {
+		return {
+			state: "error",
+			message: "playersConnected is null",
+		};
+	}
+
 	if (player_names === undefined) {
 		player_names = [];
 	}
 
 	if (player_names.length < playersConnected.length) {
-		return { state: "partial" };
+		return { state: "partial", message: "" };
 	}
 
-	let diff = player_names.filter(x => !playersConnected.includes(x));
+	let diff = player_names.filter(x => playersConnected ? !playersConnected.includes(x) : x);
 	for (const player of diff) {
 		const ret = response.sql(await pg.createSession(player), "Unable to create session for " + player);
 		if (ret === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
 		logs.info(`${player} is ${colors.green}connected${colors.end}!`);
 	}
@@ -291,98 +319,102 @@ async function newSessions(data)
 	return { state: "success" };
 }
 
-function calcLogtime(session, current)
+function calcLogtime(session: number, current: number): number
 {
 	const timestamp = time.getTimestamp();
-	const logtime = timestamp - parseInt(session.connection_time) + (typeof(current) === "object" ? parseInt(current.logtime) : 0);
+	const logtime = timestamp - session + current;
 	return logtime;
 }
 
-async function createLogtime(username)
+async function createLogtime(username: string): Promise<SuccessResponse | ErrorResponse>
 {
-	const session = response.sql(await pg.getPlayerSession(username), "Unable to get session for " + username);
+	const session = response.sql(await pg.getPlayerSession(username), "Unable to get session for " + username) as any;
 	if (session === "error") {
-		return { state: "error" };
+		return { state: "error", message: "" };
 	}
 
 	let createLogtime = false;
-
-	const logtime = response.sql(await pg.getLogtime(username), "Unable to get logtime for " + username);
-	if (logtime === "error") {
-		return { state: "error" };
-	} else if (logtime === "empty") {
+	let logtime: number = 0;
+	const userLogtime = response.sql(await pg.getLogtime(username), "Unable to get logtime for " + username) as any;
+	if (userLogtime === "error") {
+		return { state: "error", message: "" };
+	} else if (userLogtime === "empty") {
 		createLogtime = true;
 	}
 
-	const newLogtime = calcLogtime(session, logtime)
+	if (userLogtime !== "empty") {
+		logtime = userLogtime[0].logtime;
+	}
+	const newLogtime: number = calcLogtime(session.connection_time, logtime);
 
-	let ret = "error";
 	// No records for current user .. creating one
-	if (createLogtime === true) {
-		ret = response.sql(await pg.createLogtime(username, newLogtime), "Unable to create logtime for " + username);
+	if (createLogtime) {
+		let ret = response.sql(await pg.createLogtime(username, newLogtime), "Unable to create logtime for " + username);
 		if (ret === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
 	} else {
 	// updating existing records
-		ret = response.sql(await pg.updateLogtime(username, newLogtime), "Unable to update logtime for " + username);
+		let ret = response.sql(await pg.updateLogtime(username, newLogtime), "Unable to update logtime for " + username);
 		if (ret === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
 	}
 
 	return { state: "success" };
 }
 
-async function endSessions(data)
+async function endSessions(player_names: Array<string>): Promise<SuccessResponse | ErrorResponse | PartialResponse>
 {
-	let player_names = data.player_names;
-	if (player_names === undefined) {
-		player_names = [];
+	if (!playersConnected) {
+		return {
+			state: "error",
+			message: "playersConnected is null",
+		};
 	}
 
 	if (player_names.length > playersConnected.length) {
-		return { state: "nothing" };
+		return { state: "partial", message: "" };
 	}
 
 	let diff = playersConnected.filter(x => !player_names.includes(x));
 	for (const player of diff) {
-		let ret = response.sql(await createLogtime(player), "Unable to compute logtime for " + player);
+		let ret = response.ft(await createLogtime(player), "Unable to compute logtime for " + player);
 		if (ret === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
 
-		ret = response.sql(await pg.removeSession(player), "Unable to end session for " + player);
+		ret = response.ft(await pg.removeSession(player), "Unable to end session for " + player);
 		if (ret === "error") {
-			return { state: "error" };
+			return { state: "error", message: "" };
 		}
 
 		logs.info(`${player} is ${colors.red}disconnected${colors.end}!`);
 	}
 
-	playersConnected = player_names.filter(x => !playersConnected.includes(x));
+	playersConnected = player_names.filter(x => playersConnected ? !playersConnected.includes(x) : x);
 
 	return { state: "success" };
 }
 
 /////////////////////////////
 
-async function updatePlayersOnline()
+async function updatePlayersOnline(): Promise<MaxPlayersOnlineResponse | ErrorResponse>
 {
 	logs.info(`current: [ ${playersOnline} / 60 ] max: ${maxPlayersOnline}`);
 	const ret = response.sql(await pg.createPlayersOnline(maxPlayersOnline), "Unable to store player value");
 	if (ret === "error") {
-		return { state: "error" };
+		return { state: "error", message: "" };
 	}
 	let tmp_maxPlayersOnline = maxPlayersOnline;
 	maxPlayersOnline = 0;
 	return {
 		state: "success",
-		maxPlayersOnline: tmp_maxPlayersOnline,
+		value: tmp_maxPlayersOnline,
 	};
 }
 
-async function initWebsocketData()
+export async function initWebsocketData(): Promise<InitDataReponse | ErrorResponse>
 {
 	const	playersSessions			= response.sql(await pg.getPlayersSessions()),
 			serverStatus			= response.sql(await pg.getServerStatus()),
@@ -391,12 +423,15 @@ async function initWebsocketData()
 			playersOnlineHistory	= response.sql(await pg.getPlayersOnline());
 
 	if (utils.oneOfEachAs("error", playersSessions, serverStatus, playersLogitmesHistory, playersLogtimesCurrent, playersOnlineHistory)) {
-		return { state: "error" };
+		return { state: "error", message: "" };
 	}
 
-	let ret = {
+	let ret: IwebsocketData = {
 		type: "init",
-		version: [mcVersion, mcBedrockVersion],
+		version: {
+			java: mcVersion,
+			bedrock: mcBedrockVersion,
+		},
 		uptime: { sessions: [] },
 		players: [],
 		daily: []
@@ -414,21 +449,19 @@ async function initWebsocketData()
 		});
 	} else {
 		for (let i = 0; i < serverStatus.length; i++) {
-			let session = {
+			let session: IsessionUptime = {
 				up: 0,
 				down: 0,
 			}
-			if (i == 0 && serverStatus[i].value === false) {
+			if (!i && !serverStatus[i].value) {
 				continue;
 			} else if (serverStatus[i + 1]) {
-				session.up = serverStatus[i].itime;
-				session.down = serverStatus[++i].itime;
+				session.up = parseInt(serverStatus[i].itime);
+				session.down = parseInt(serverStatus[++i].itime);
 			} else {
-				session.up = serverStatus[i].itime;
+				session.up = parseInt(serverStatus[i].itime);
 				session.down = 0;
 			}
-			session.up = parseInt(session.up);
-			session.down = parseInt(session.down);
 			ret.uptime.sessions.push(session);
 		}
 	}
@@ -451,24 +484,24 @@ async function initWebsocketData()
 				continue;
 			}
 
-			let player = {
+			let player: IplayersHistory = {
 				username: username,
 				data: [],
 				todayLogtime: 0,
 			};
 
-			for (const x in playersLogitmesHistory) {
+			for (const x in playersLogitmesHistory as any[]) {
 				const logtime = playersLogitmesHistory[x].logtime[i];
 				player.data.push({
-					date: playersLogitmesHistory[x].itime,
+					date: new time.getDate(playersLogitmesHistory[x].itime).lite(),
 					logtime: logtime ? parseInt(logtime) : 0,
 				});
 			};
 			const todayLogtime = () => {
 				const logtimeHistory = player.data[player.data.length - 1];
-				const find = playersSessions.filter(s => s.username === username);
+				const find = (playersSessions as any[]).filter(s => s.username === username);
 				if (find.length == 1) {
-					return calcLogtime(find[0], logtimeHistory);
+					return calcLogtime(find[0].connection_time, logtimeHistory.logtime);
 				}
 				return logtimeHistory.logtime;
 			}
@@ -490,9 +523,9 @@ async function initWebsocketData()
 				todayLogtime: 0,
 			};
 			const todayLogtime = () => {
-				const find = playersSessions.filter(s => s.username === username);
+				const find = (playersSessions as any[]).filter(s => s.username === username);
 				if (find.length == 1) {
-					return calcLogtime(find[0], logtime);
+					return calcLogtime(find[0].connection_time, logtime.logtime);
 				}
 				return logtime.logtime;
 			}
@@ -533,7 +566,7 @@ async function initWebsocketData()
 	return {
 		state: "success",
 		init: ret,
-		playersConnected: playersSessions.length !== 0 ? utils.extractJSON(playersSessions, "username") : [],
+		playersConnected: playersSessions.length != 0 ? utils.extractJSON(playersSessions as any[], "username") as string[] : [],
 	};
 }
 
@@ -548,12 +581,9 @@ setInterval(async() => {
 		return ;
 	}
 
-	const ret = updatePlayersOnline();
+	const ret = await updatePlayersOnline();
 	if (ret.state !== "error") {
 		logs.info("Players online history successfully created.");
-		websocket.sendMaxPlayers(ret);
+		websocket.sendMaxPlayers(ret.value);
 	}
 }, 60000);
-
-module.exports.dataCollector = dataCollector;
-module.exports.initWebsocketData = initWebsocketData;

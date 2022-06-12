@@ -1,8 +1,11 @@
-const postgres		= require('pg-native');
-const utils			= require('./utils/utils.js');
-const logs			= require('./utils/logs.js');
-const time			= require('./utils/time.js');
-const response		= require('./utils/response.js');
+const postgres = require('pg-native');
+
+import { ErrorResponse, SuccessResponse, PartialResponse } from '$types';
+import * as utils from '$utils/utils';
+import { logs } from '$utils/logs';
+import * as time from '$utils/time';
+import * as response from '$utils/response';
+import { IplayerLogtime, IplayerLogtimeHistory } from '../types';
 
 //Connect to postgresql database
 const pg = new postgres();
@@ -11,15 +14,15 @@ try {
 	pg.connectSync(config);
 	logs.info("Connected to database.");
 }
-catch (e) {
+catch (e: any) {
 	logs.fatal(`config: ${config}\n\n\t${e.message}\n\tUnable to connect to postgresql database.`);
 }
 
 ///////////////////////////// response
 
-function response_error(error)
+function response_error(error: string | Error | undefined = undefined): ErrorResponse
 {
-	let response = {
+	let response: ErrorResponse = {
 		state: "error",
 		message: "undefined error",
 	};
@@ -36,7 +39,7 @@ function response_error(error)
 	return response;
 }
 
-function response_success(content = null)
+function response_success(content: any[] | undefined = undefined): SuccessResponse
 {
 	return {
 		state: "success",
@@ -44,7 +47,7 @@ function response_success(content = null)
 	};
 }
 
-function response_partial(message = null)
+function response_partial(message: string = ""): PartialResponse
 {
 	return {
 		state: "partial",
@@ -55,7 +58,7 @@ function response_partial(message = null)
 ///////////////////////////// Sessions
 ////////////// get
 
-async function getPlayersSessions()
+export async function getPlayersSessions()
 {
 	const transID = utils.getTransID();
 
@@ -64,14 +67,14 @@ async function getPlayersSessions()
 			SELECT username, connection_time
 			FROM public.players_sessions
 		`);
-		rows = pg.executeSync(transID);
+		const rows = pg.executeSync(transID);
 		return response_success(rows);
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
 
-async function getPlayerSession(username)
+export async function getPlayerSession(username: string)
 {
 	const transID = utils.getTransID();
 
@@ -85,7 +88,7 @@ async function getPlayerSession(username)
 			FROM public.players_sessions
 			WHERE username='${username}'
 		`);
-		rows = pg.executeSync(transID);
+		const rows = pg.executeSync(transID);
 		if (rows.length > 1) {
 			throw Error("multiple user with the same name");
 		}
@@ -93,14 +96,14 @@ async function getPlayerSession(username)
 			return response_partial("No session found for " + username);
 		}
 		return response_success(rows[0]);
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
 
 ////////////// insert
 
-async function createSession(username)
+export async function createSession(username: string)
 {
 	const transID = utils.getTransID();
 
@@ -116,14 +119,14 @@ async function createSession(username)
 		`);
 		pg.executeSync(transID);
 		return response_success();
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
 
 ////////////// delete
 
-async function removeSession(username)
+export async function removeSession(username: string)
 {
 	const transID = utils.getTransID();
 
@@ -138,7 +141,7 @@ async function removeSession(username)
 		`);
 		pg.executeSync(transID);
 		return response_success();
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
@@ -146,7 +149,7 @@ async function removeSession(username)
 ///////////////////////////// Logtime
 ////////////// get
 
-async function getLogtimes()
+export async function getLogtimes()
 {
 	const transID = utils.getTransID();
 
@@ -156,17 +159,26 @@ async function getLogtimes()
 			FROM public.players_logtime
 			ORDER by username
 		`);
-		rows = pg.executeSync(transID);
+		const rows = pg.executeSync(transID);
 		if (rows.length == 0) {
 			return response_partial("No logtime found");
 		}
-		return response_success(rows);
-	} catch (e) {
+
+		let ret: Array<IplayerLogtime> = [];
+		for (const row of rows) {
+			ret.push({
+				username: row.username,
+				logtime: parseInt(row.logtime),
+			});
+		}
+
+		return response_success(ret);
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
 
-async function getLogtime(username)
+export async function getLogtime(username: string)
 {
 	const transID = utils.getTransID();
 
@@ -180,22 +192,28 @@ async function getLogtime(username)
 			FROM public.players_logtime
 			WHERE username='${username}'
 		`);
-		rows = pg.executeSync(transID);
+		const rows = pg.executeSync(transID);
 		if (rows.length > 1) {
 			throw Error("multiple user with the same name");
 		}
 		if (rows.length == 0) {
 			return response_partial("No logtime found for " + username);
 		}
-		return response_success(rows[0]);
-	} catch (e) {
+
+		const ret: Array<IplayerLogtime> = [{
+			username: username,
+			logtime: parseInt(rows[0].logtime),
+		}];
+
+		return response_success(ret);
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
 
 ////////////// insert
 
-async function createLogtime(username, logtime)
+export async function createLogtime(username: string, logtime: number)
 {
 	const transID = utils.getTransID();
 
@@ -211,14 +229,14 @@ async function createLogtime(username, logtime)
 		`);
 		pg.executeSync(transID);
 		return response_success();
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
 
 ////////////// update
 
-async function updateLogtime(username, logtime)
+export async function updateLogtime(username: string, logtime: number)
 {
 	const transID = utils.getTransID();
 
@@ -234,7 +252,7 @@ async function updateLogtime(username, logtime)
 		`);
 		pg.executeSync(transID);
 		return response_success();
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
@@ -242,7 +260,7 @@ async function updateLogtime(username, logtime)
 ///////////////////////////// Players online
 ////////////// get
 
-async function getPlayersOnline()
+export async function getPlayersOnline()
 {
 	const transID = utils.getTransID();
 
@@ -251,19 +269,19 @@ async function getPlayersOnline()
 			SELECT itime, value
 			FROM public.players_online
 		`);
-		rows = pg.executeSync(transID);
+		const rows = pg.executeSync(transID);
 		if (rows.length == 0) {
 			return response_partial("No player online data found");
 		}
 		return response_success(rows);
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
 
 ////////////// insert
 
-async function createPlayersOnline(value)
+export async function createPlayersOnline(value: number)
 {
 	const transID = utils.getTransID();
 
@@ -279,7 +297,7 @@ async function createPlayersOnline(value)
 		`);
 		pg.executeSync(transID);
 		return response_success();
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
@@ -287,7 +305,7 @@ async function createPlayersOnline(value)
 ///////////////////////////// Server status
 ////////////// get
 
-async function getServerStatus(limit = 0, order = "ASC")
+export async function getServerStatus(limit: number = 0, order: string = "ASC")
 {
 	const transID = utils.getTransID();
 
@@ -297,23 +315,23 @@ async function getServerStatus(limit = 0, order = "ASC")
 			FROM public.server_uptime
 			ORDER BY id ${order} ${limit ? "LIMIT " + limit : ""}
 		`);
-		rows = pg.executeSync(transID);
+		const rows = pg.executeSync(transID);
 		if (rows.length == 0) {
 			return response_partial("No server data found");
 		}
 		return response_success(rows);
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
 
 ////////////// insert
 
-async function createServerStatus(value)
+export async function createServerStatus(bool: boolean)
 {
 	const transID = utils.getTransID();
 
-	if (value === undefined) {
+	if (bool === undefined) {
 		return response_error("value undefined");
 	}
 
@@ -321,11 +339,11 @@ async function createServerStatus(value)
 		pg.prepareSync(transID, `
 			INSERT INTO public.server_uptime
 			(itime, value)
-			VALUES ('${time.getTimestamp()}', ${value})
+			VALUES ('${time.getTimestamp()}', ${bool})
 		`);
 		pg.executeSync(transID);
 		return response_success();
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
@@ -333,7 +351,7 @@ async function createServerStatus(value)
 ///////////////////////////// Logtime history
 ////////////// get
 
-async function getLogtimeHistory(limit = 0)
+export async function getLogtimeHistory()
 {
 	const transID = utils.getTransID();
 
@@ -343,12 +361,27 @@ async function getLogtimeHistory(limit = 0)
 			FROM public.logtime_history
 			ORDER BY id ASC
 		`);
-		rows = pg.executeSync(transID);
+		const rows = pg.executeSync(transID);
 		if (rows.length == 0) {
 			return response_partial("No logtime history found");
 		}
-		return response_success(rows);
-	} catch (e) {
+
+		let ret: Array<IplayerLogtimeHistory> = [];
+		for (const row of rows) {
+			let history: IplayerLogtimeHistory = {
+				username: [],
+				logtime: [],
+				itime: row.itime,
+			};
+			for (const i in row.username) {
+				history.username.push(row.username[i]);
+				history.logtime.push(parseInt(row.logtime[i]));
+			}
+			ret.push(history);
+		}
+
+		return response_success(ret);
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
@@ -367,8 +400,8 @@ async function createLogtimeHistory()
 		return response_partial();
 	}
 
-	let username = utils.stringifyArraySQL( utils.extractJSON(ret, "username") );
-	let logtime = utils.stringifyArraySQL( utils.extractJSON(ret, "logtime"), "\"", "" );
+	let username = utils.stringifyArraySQL( utils.extractJSON(ret as any[], "username") );
+	let logtime = utils.stringifyArraySQL( utils.extractJSON(ret as any[], "logtime"), "\"", "" );
 
 	try {
 		pg.prepareSync(transID, `
@@ -378,7 +411,7 @@ async function createLogtimeHistory()
 		`);
 		pg.executeSync(transID);
 		return response_success();
-	} catch (e) {
+	} catch (e: any) {
 		return response_error(e);
 	}
 }
@@ -391,33 +424,15 @@ setInterval(async() => {
 	const ret = await createLogtimeHistory();
 	if (ret.state === "success") {
 		logs.info("Logtime history successfully created.");
-	} else if (ret.state === "empty") {
+	} else if (ret.state === "partial") {
 		logs.info("No Logtime data to create logtime history.");
 	} else {
 		logs.warning("Failed to update logtime history.");
 	}
 }, 60000);
 
-module.exports.getPlayersSessions = getPlayersSessions;
-module.exports.getPlayerSession = getPlayerSession;
-module.exports.createSession = createSession;
-module.exports.removeSession = removeSession;
-
-module.exports.getLogtimes = getLogtimes;
-module.exports.getLogtime = getLogtime;
-module.exports.createLogtime = createLogtime;
-module.exports.updateLogtime = updateLogtime;
-
-module.exports.getLogtimeHistory = getLogtimeHistory;
-
-module.exports.getPlayersOnline = getPlayersOnline;
-module.exports.createPlayersOnline = createPlayersOnline;
-
-module.exports.getServerStatus = getServerStatus;
-module.exports.createServerStatus = createServerStatus;
-
 // for development / debug purposes only
-function deleteTable(table)
+export function deleteTable(table: string)
 {
 	const transID = utils.getTransID();
 
@@ -428,10 +443,8 @@ function deleteTable(table)
 		pg.executeSync(transID);
 		logs.info("Deleted " + table);
 		return response_success();
-	} catch (e) {
+	} catch (e: any) {
 		logs.error("delete failed for " + table);
 		return response_error(e);
 	};
 }
-
-module.exports.deleteTable = deleteTable;
