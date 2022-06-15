@@ -22,6 +22,8 @@ logs.info("Server started.");
 logs.info("listening port : " + env.websocketPort);
 logs.info("Waiting for peers..");
 logs.info(`requesting data from "${env.minecraftHost}:${env.minecraftQueryPort}"`);
+logs.info(`                     "${env.minecraftHost}:${env.minecraftRconPort}"`);
+logs.info(`                     "${env.minecraftBedrockHost}:${env.minecraftBedrockPort}"`);
 
 process.on('SIGINT', () => {
 	console.log();

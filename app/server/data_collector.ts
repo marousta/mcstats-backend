@@ -20,7 +20,8 @@ async function fetchBedrockInfos()
 						})
 						.catch(error => {
 							if (!error.message.includes("received 0") // UDP timeout ignore
-							&& !error.message.includes("Timed out")) {
+							&& !error.message.includes("Timed out")
+							&& !error.message.includes("getaddrinfo EAI_AGAIN minecraft")) {
 								logs.mc("fetchBedrockInfos: " + error.message);
 							}
 							return { status: false };
@@ -43,7 +44,8 @@ async function fetchJavaInfos()
 						})
 						.catch(error => {
 							if (!error.message.includes("received 0") // UDP timeout ignore
-							&& !error.message.includes("Timed out")) {
+							&& !error.message.includes("Timed out")
+							&& !error.message.includes("getaddrinfo EAI_AGAIN minecraft")) {
 								logs.mc("fetchJavaInfos: " + error.message);
 							}
 							return { status: false };
@@ -71,7 +73,9 @@ async function fetchPlayers(): Promise<defaultTrueResponse | defaultFalseRespons
 			});
 		}
 	} catch(e: any) {
-		if (!e.message.includes("ECONNREFUSED")) {
+		if (!e.message.includes("ECONNREFUSED")
+		&& !e.message.includes("getaddrinfo EAI_AGAIN minecraft")
+		&& !e.message.includes("connect EHOSTUNREACH")) {
 			logs.error(e.message);
 		}
 	}
