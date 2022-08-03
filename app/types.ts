@@ -1,4 +1,4 @@
-import { FullQueryResponse } from 'minecraft-server-util';
+import { FullQueryResponse, BedrockStatusResponse } from 'minecraft-server-util';
 
 export const colors = {
 	red: "\x1b[31m",
@@ -119,6 +119,10 @@ export type DataCollected = {
 };
 
 export interface FullQueryTrueResponse extends FullQueryResponse {
+	status: boolean;
+};
+
+export interface BedrockTrueResponse extends BedrockStatusResponse {
 	status: boolean;
 };
 

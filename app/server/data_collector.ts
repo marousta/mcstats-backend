@@ -1,7 +1,7 @@
 import * as mc from 'minecraft-server-util';
 import * as rconClient from 'rcon-client';
 
-import { colors, DataCollected, FullQueryTrueResponse, defaultFalseResponse, defaultTrueResponse, IwebsocketData, ErrorResponse, SuccessResponse, PartialResponse, IsessionUptime, IplayersHistory, MaxPlayersOnlineResponse, InitDataReponse } from '$types';
+import { colors, DataCollected, FullQueryTrueResponse, BedrockTrueResponse, defaultFalseResponse, defaultTrueResponse, IwebsocketData, ErrorResponse, SuccessResponse, PartialResponse, IsessionUptime, IplayersHistory, MaxPlayersOnlineResponse, InitDataReponse } from '$types';
 import { env } from '$env';
 import * as utils from '$utils/utils';
 import { logs } from '$utils/logs';
@@ -14,7 +14,7 @@ import * as pg from '$server/sql';
 
 async function fetchBedrockInfos()
 {
-	let query: FullQueryTrueResponse | defaultFalseResponse = await mc.queryFull(env.minecraftBedrockHost, env.minecraftBedrockPort, { timeout: 3000 })
+	let query: BedrockTrueResponse | defaultFalseResponse = await mc.statusBedrock(env.minecraftBedrockHost, env.minecraftBedrockPort, { timeout: 3000 })
 						.then(result => {
 							return { status: true, ...result};
 						})
@@ -27,7 +27,7 @@ async function fetchBedrockInfos()
 							return { status: false };
 						});
 	if (query.status) {
-		const version = query.version.split(" ")[2];
+		const version = query.version.name;
 		if (mcBedrockVersion != version) {
 			mcBedrockVersion = version;
 			websocket.sendVersion(mcVersion, mcBedrockVersion);
