@@ -19,8 +19,11 @@ export async function setPingUser(): Promise<SuccessResponse | ErrorResponse>
 		};
 	}
 	let members = await guild.members.fetch();
-	pingUser = members.map(u => u.user.tag === env.discordUser ? u : null)[0];
-	if (pingUser === undefined) {
+	const userSplit = env.discordUser?.split("#") || "";
+	const username = userSplit[0] || null;
+	const discriminator = userSplit[1] || null;
+	pingUser = members.map(u => u.user.username === username && u.user.discriminator === discriminator ? u : null).filter(u => u ? u : 0)[0];
+	if (!pingUser) {
 		return {
 			state: "error",
 			message: "Discord user " + env.discordUser + " not found",
@@ -28,6 +31,7 @@ export async function setPingUser(): Promise<SuccessResponse | ErrorResponse>
 	}
 	return { state: "success" };
 }
+
 export async function setChannel(): Promise<SuccessResponse | ErrorResponse>
 {
 	if (!guild) {
@@ -49,6 +53,7 @@ export async function setChannel(): Promise<SuccessResponse | ErrorResponse>
 	channel = tmp[0] as TextChannel;
 	return { state: "success" };
 }
+
 export async function init(): Promise<SuccessResponse | ErrorResponse>
 {
 	let ret: Promise<SuccessResponse | ErrorResponse> = new Promise((resolve) => {
@@ -69,6 +74,7 @@ export async function init(): Promise<SuccessResponse | ErrorResponse>
 	discord_bot.login(env.discordToken);
 	return await ret;
 }
+
 export async function test(): Promise<SuccessResponse | ErrorResponse>
 {
 	if (!channel) {
@@ -89,6 +95,7 @@ export async function test(): Promise<SuccessResponse | ErrorResponse>
 								};
 							}) as SuccessResponse | ErrorResponse;
 }
+
 export async function send(message: string): Promise<SuccessResponse | PartialResponse | ErrorResponse>
 {
 	if (channel === null || pingUser === null) {
