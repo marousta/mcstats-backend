@@ -323,13 +323,6 @@ async function newSessions(player_names: Array<string>): Promise<SuccessResponse
 	return { state: "success" };
 }
 
-function calcLogtime(session: number, current: number): number
-{
-	const timestamp = time.getTimestamp();
-	const logtime = timestamp - session + current;
-	return logtime;
-}
-
 async function createLogtime(username: string): Promise<SuccessResponse | ErrorResponse>
 {
 	const session = response.sql(await pg.getPlayerSession(username), "Unable to get session for " + username) as any;
@@ -349,7 +342,7 @@ async function createLogtime(username: string): Promise<SuccessResponse | ErrorR
 	if (userLogtime !== "empty") {
 		logtime = userLogtime[0].logtime;
 	}
-	const newLogtime: number = calcLogtime(session.connection_time, logtime);
+	const newLogtime: number = utils.calcLogtime(session.connection_time, logtime);
 
 	// No records for current user .. creating one
 	if (createLogtime) {
@@ -525,7 +518,7 @@ export async function initWebsocketData(): Promise<InitDataReponse | ErrorRespon
 				// find current session logtime
 				find = (playersSessions as any[]).filter(s => s.username === username);
 				if (find.length == 1) {
-					return calcLogtime(find[0].connection_time, current);
+					return utils.calcLogtime(find[0].connection_time, current);
 				}
 				// already up to date
 				return current;
@@ -551,7 +544,7 @@ export async function initWebsocketData(): Promise<InitDataReponse | ErrorRespon
 			const todayLogtime = () => {
 				const find = (playersSessions as any[]).filter(s => s.username === username);
 				if (find.length == 1) {
-					return calcLogtime(find[0].connection_time, current.logtime);
+					return utils.calcLogtime(find[0].connection_time, current.logtime);
 				}
 				return current.logtime;
 			}

@@ -392,7 +392,7 @@ async function createLogtimeHistory()
 {
 	const transID = utils.getTransID();
 
-	let ret = response.sql(await getLogtimes(), "getLogtimes failed");
+	const ret = response.sql(await getLogtimes(), "getLogtimes failed");
 	if (ret === "error") {
 		return response_error();
 	}
@@ -400,8 +400,21 @@ async function createLogtimeHistory()
 		return response_partial();
 	}
 
-	let username = utils.stringifyArraySQL( utils.extractJSON(ret as any[], "username") );
-	let logtime = utils.stringifyArraySQL( utils.extractJSON(ret as any[], "logtime"), "\"", "" );
+	const playersSessions = response.sql(await getPlayersSessions());
+	let usernameArray = utils.extractJSON(ret as any[], "username")
+	let logtimeArray = utils.extractJSON(ret as any[], "logtime")
+
+	for (const i in usernameArray) {
+		for (const session of playersSessions) {
+			if (session.username != usernameArray[i]) {
+				continue;
+			}
+			logtimeArray[i] = utils.calcLogtime(session.connection_time, parseInt(logtimeArray[i] as string));
+		}
+	}
+
+	let username = utils.stringifyArraySQL(usernameArray);
+	let logtime = utils.stringifyArraySQL(logtimeArray, "\"", "" );
 
 	try {
 		pg.prepareSync(transID, `

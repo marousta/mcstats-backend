@@ -1,3 +1,5 @@
+import { getTimestamp } from '$utils/time';
+
 export function getTransID(): string
 {
 	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c): string => {
@@ -41,4 +43,11 @@ export function getFunctionAndLine(lvl: number = 3): string
 		fileName = frame.split("(")[1].split(")")[0].replaceAll(" ", "\\ ");
 	}
 	return functinName + " " + fileName;
+}
+
+export function calcLogtime(session: number, current: number): number
+{
+	const timestamp = getTimestamp();
+	const logtime = timestamp - session + current;
+	return logtime;
 }
