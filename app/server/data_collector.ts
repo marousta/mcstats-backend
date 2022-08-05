@@ -480,8 +480,7 @@ export async function initWebsocketData(): Promise<InitDataReponse | ErrorRespon
     // ]
 	// from history in database
 	for (const history of playersLogitmesHistory) {
-		for (const i in history.username) {
-			const username = history.username[i];
+		for (const username of history.username) {
 			// skip duplicate username of each days
 			const duplicate = ret.players.filter(x => x.username === username);
 			if (duplicate.length != 0) {
@@ -495,19 +494,41 @@ export async function initWebsocketData(): Promise<InitDataReponse | ErrorRespon
 			};
 
 			for (const x in playersLogitmesHistory as any[]) {
+				const getIndex = (username: string) => {
+					let i = 0;
+					for (const u of playersLogitmesHistory[x].username) {
+						if (u === username) {
+							return i;
+						}
+						i++;
+					}
+					return i;
+				}
+				const i = getIndex(username);
 				const logtime = playersLogitmesHistory[x].logtime[i];
 				player.data.push({
 					date: new time.getDate(playersLogitmesHistory[x].itime).lite(),
 					logtime: logtime ? parseInt(logtime) : 0,
 				});
 			};
+			// calculate real/current logtime
 			const todayLogtime = () => {
-				const logtimeHistory = player.data[player.data.length - 1];
-				const find = (playersSessions as any[]).filter(s => s.username === username);
+				// const logtimeHistory = player.data[player.data.length - 1];
+
+				// find latest logtime in database
+				let current = 0;
+				let find = (playersLogtimesCurrent as any[]).filter(c => c.username === username);
 				if (find.length == 1) {
-					return calcLogtime(find[0].connection_time, logtimeHistory.logtime);
+					current = find[0].logtime;
 				}
-				return logtimeHistory.logtime;
+
+				// find current session logtime
+				find = (playersSessions as any[]).filter(s => s.username === username);
+				if (find.length == 1) {
+					return calcLogtime(find[0].connection_time, current);
+				}
+				// already up to date
+				return current;
 			}
 			player.todayLogtime = todayLogtime();
 			ret.players.push(player);
@@ -515,13 +536,14 @@ export async function initWebsocketData(): Promise<InitDataReponse | ErrorRespon
 	}
 	// from today new values not in history
 	if (playersLogtimesCurrent !== "empty") {
-		for (const logtime of playersLogtimesCurrent) {
-			const username = logtime.username;
+		for (const current of playersLogtimesCurrent) {
+			const username = current.username;
+			// skip duplicate username of each days
 			const duplicate = ret.players.filter(x => x.username === username);
 			if (duplicate.length != 0) {
 				continue;
 			}
-			let player = {
+			let player: IplayersHistory = {
 				username: username,
 				data: [],
 				todayLogtime: 0,
@@ -529,9 +551,9 @@ export async function initWebsocketData(): Promise<InitDataReponse | ErrorRespon
 			const todayLogtime = () => {
 				const find = (playersSessions as any[]).filter(s => s.username === username);
 				if (find.length == 1) {
-					return calcLogtime(find[0].connection_time, logtime.logtime);
+					return calcLogtime(find[0].connection_time, current.logtime);
 				}
-				return logtime.logtime;
+				return current.logtime;
 			}
 			player.todayLogtime = todayLogtime();
 			ret.players.push(player);
@@ -545,7 +567,7 @@ export async function initWebsocketData(): Promise<InitDataReponse | ErrorRespon
 			if (duplicate.length != 0) {
 				continue;
 			}
-			let player = {
+			let player: IplayersHistory = {
 				username: username,
 				data: [],
 				todayLogtime: time.getTimestamp() - session.connection_time,
@@ -553,6 +575,20 @@ export async function initWebsocketData(): Promise<InitDataReponse | ErrorRespon
 			ret.players.push(player);
 		}
 	}
+	// sort by username asc
+	ret.players.sort((a, b) => {
+		if ( a.username.toLowerCase() < b.username.toLowerCase() ){
+			return -1;
+		}
+		if ( a.username.toLowerCase() > b.username.toLowerCase() ){
+			return 1;
+		}
+		return 0;
+	});
+
+	// for (const player of ret.players) {
+	// 	console.log(player.username, player.todayLogtime);
+	// }
 
 	// daily: [
 	// 	{ date, maxPlayers },

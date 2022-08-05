@@ -157,7 +157,7 @@ export async function getLogtimes()
 		pg.prepareSync(transID, `
 			SELECT username, logtime
 			FROM public.players_logtime
-			ORDER by username
+			ORDER by username ASC
 		`);
 		const rows = pg.executeSync(transID);
 		if (rows.length == 0) {
