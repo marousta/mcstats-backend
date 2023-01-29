@@ -1,13 +1,13 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
-export class PlayersOnline {
-	@PrimaryGeneratedColumn('rowid')
-	id: number;
+export class HistoryPlayersOnline {
+	@PrimaryGeneratedColumn('uuid')
+	uuid: string;
 
 	@Column({ nullable: false })
-	itime: Date;
+	time: Date;
 
 	@Column({ nullable: false })
-	value: boolean;
+	value: number;
 }

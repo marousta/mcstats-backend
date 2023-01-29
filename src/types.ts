@@ -1,9 +1,70 @@
-export const colors = {
-	red: '\x1b[31m',
-	green: '\x1b[32m',
-	blue: '\x1b[34m',
-	cyan: '\x1b[36m',
-	yellow: '\x1b[33m',
-	pink: '\x1b[35m',
-	end: '\x1b[0m',
-};
+/**
+ * Generic
+ */
+
+export interface Response {
+	success: boolean;
+	data?: any;
+}
+
+export interface ResponseSuccess extends Response {
+	success: true;
+}
+
+export interface ResponseFailure extends Response {
+	success: false;
+}
+
+/**
+ * PlayerDB
+ */
+
+export interface PlayerDBMinecraftDefault {
+	code?: string;
+	message?: string;
+	data?: {
+		player: {
+			meta: {
+				cached_at: number;
+			};
+			username: string;
+			id: string;
+			raw_id: string;
+			avatar: string;
+			name_history: string[];
+		};
+	};
+	success: boolean;
+}
+
+export interface PlayerDBMinecraftSuccess extends PlayerDBMinecraftDefault {
+	code: string;
+	message: string;
+	data: {
+		player: {
+			meta: {
+				cached_at: number;
+			};
+			username: string;
+			id: string;
+			raw_id: string;
+			avatar: string;
+			name_history: string[];
+		};
+	};
+	success: true;
+}
+
+export interface PlayerDBMinecraftFailure extends PlayerDBMinecraftDefault {
+	code: string;
+	message: string;
+	success: false;
+}
+
+export interface PlayerDBMinecraftFailover extends PlayerDBMinecraftDefault {
+	success: false;
+}
+
+/**
+ *
+ */

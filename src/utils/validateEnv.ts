@@ -1,4 +1,4 @@
-import { colors } from './types';
+import colors from './colors';
 
 export class ValidateEnv {
 	error = false;
