@@ -1,6 +1,5 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { get } from 'http';
-import { AppService } from './services/app.service';
+import { Controller, Get, Request } from '@nestjs/common';
+import { AppService } from '../services/app.service';
 
 @Controller()
 export class AppController {
@@ -9,6 +8,12 @@ export class AppController {
 	@Get('ping')
 	ping() {
 		return 'PONG';
+	}
+
+	@Get('stats')
+	stats(@Request() req: any) {
+		console.log(req.times);
+		return req.times;
 	}
 
 	@Get('server/status')

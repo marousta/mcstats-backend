@@ -1,5 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { PlayersLogtime } from './players_logtime.entity';
+import { PlayersLogtime } from './logtime.entity';
 
 @Entity()
 export class PlayersSessions {

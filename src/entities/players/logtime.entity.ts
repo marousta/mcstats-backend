@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
+import { PlayersSessions } from './sessions.entity';
 
 @Entity()
 export class PlayersLogtime {

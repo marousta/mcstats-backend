@@ -1,29 +1,20 @@
-import { NestFactory } from '@nestjs/core';
-import { WsAdapter } from '@nestjs/platform-ws';
-
-import { AppModule } from './app.module';
-import { ValidateEnv } from './utils/validateEnv';
 import { Logger } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { WsAdapter } from '@nestjs/platform-ws';
+import helmet from 'helmet';
+
+import { AppModule } from 'src/app/app.module';
 import { DBService } from './services/db.service';
 
+import checkEnv from './env/check';
+
 async function bootstrap() {
-	const env = new ValidateEnv();
-	env.check('WEBSOCKET_PORT', 0);
-	env.check('USER_AGENT', 'string');
-	env.check('MC_HOST', 'string');
-	env.check('MC_QUERY_PORT', 0);
-	env.check('MC_RCON_PORT', 0);
-	env.check('MC_RCON_PASSWORD', 'string');
-	env.check('PSQL_HOST', 'string');
-	env.check('PSQL_PORT', 0);
-	env.check('PSQL_USERNAME', 'string');
-	env.check('PSQL_PASSWORD', 'string');
-	env.check('PSQL_DATABASE', 'string');
-	env.check('PSQL_SYNC', false);
-	env.result();
+	checkEnv();
 
 	const app = await NestFactory.create(AppModule);
+
+	app.use(helmet());
 
 	app.enableCors();
 	app.setGlobalPrefix('api');
@@ -69,7 +60,7 @@ async function bootstrap() {
 	// 	return;
 	// }
 
-	// const new_session = await service.create.session(user);
+	// const new_session = await service.create.player.session(user);
 	// console.log(new_session);
 
 	// let get_session = await service.get.player.session();

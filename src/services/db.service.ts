@@ -1,17 +1,17 @@
-import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
 
 import {
 	HistoryPlayersLogtime,
 	HistoryPlayersLogtimeMapped,
-} from '../entities/history/history_players_logtime.entity';
-import { HistoryPlayersOnline } from '../entities/history/history_players_online.entity';
-import { PlayersLogtime } from '../entities/players/players_logtime.entity';
-import { PlayersSessions } from '../entities/players/players_sessions.entity';
+} from '../entities/history/logtime.entity';
+import { HistoryPlayersOnline } from '../entities/history/online.entity';
+import { PlayersLogtime } from '../entities/players/logtime.entity';
+import { PlayersSessions } from '../entities/players/sessions.entity';
 import { ServerUptime } from '../entities/server_uptime.entity';
-import { ConfigService } from '@nestjs/config';
 
 import {
 	PlayerDBMinecraftFailover,
@@ -87,7 +87,7 @@ export class DBService {
 				return this.playersSessionsRepo
 					.createQueryBuilder('sessions')
 					.select()
-					.leftJoin('sessions.user', 'user')
+					.leftJoinAndSelect('sessions.user', 'user')
 					.where(user ? { user } : {})
 					.getMany()
 					.catch((e) => {
@@ -139,13 +139,28 @@ export class DBService {
 		server: {
 			uptime: async (): Promise<ServerUptime[] | null> => {
 				this.logger.debug(
-					`${colors.pink}[get.server.uptime]${colors.green} Getting server uptime`,
+					`${colors.pink}[get.server.uptime]${colors.green} Getting server uptime history`,
 				);
 
 				return this.serverUptimeRepo
 					.createQueryBuilder()
 					.select()
 					.getMany()
+					.catch((e) => {
+						this.logger.error(`Unable to get server uptime history`, e);
+						return null;
+					});
+			},
+			lastUptime: async (): Promise<ServerUptime | null> => {
+				this.logger.debug(
+					`${colors.pink}[get.server.uptime]${colors.green} Getting server uptime`,
+				);
+
+				return this.serverUptimeRepo
+					.createQueryBuilder()
+					.select()
+					.orderBy('time', 'DESC')
+					.getOne()
 					.catch((e) => {
 						this.logger.error(`Unable to get server uptime`, e);
 						return null;
@@ -422,38 +437,64 @@ export class DBService {
 		return PlayerDB.data.player.id;
 	}
 
-	async mapUUIDtoUsernames(
-		logtimes: HistoryPlayersLogtime,
-	): Promise<HistoryPlayersLogtimeMapped | null> {
-		this.logger.debug(
-			`${colors.pink}[mapUUIDtoUsernames]${colors.green} Mapping UUIDs to usernames`,
-		);
+	public readonly mapUsernames = {
+		logtimeHistory: async (
+			logtimes: HistoryPlayersLogtime,
+		): Promise<HistoryPlayersLogtimeMapped | null> => {
+			this.logger.debug(
+				`${colors.pink}[mapUUIDtoUsernames]${colors.green} Mapping UUIDs to usernames`,
+			);
 
-		const users = await this.playersLogtimeRepo
-			.createQueryBuilder('users')
-			.select('users.uuid', 'users.username')
-			.getMany()
-			.catch((e) => {
-				this.logger.error(`Unable to get users`, e);
+			const users = await this.playersLogtimeRepo
+				.createQueryBuilder('users')
+				.select('users.uuid', 'users.username')
+				.getMany()
+				.catch((e) => {
+					this.logger.error(`Unable to get users`, e);
+					return null;
+				});
+
+			if (!users || !users.length) {
 				return null;
-			});
+			}
 
-		if (!users || !users.length) {
-			return null;
-		}
+			const usernames = logtimes.uuids.map(
+				(uuid: string) =>
+					users.filter((user: PlayersLogtime) => uuid === user.uuid).shift()?.username ??
+					uuid,
+			);
 
-		const usernames = logtimes.uuids.map(
-			(uuid: string) =>
-				users.filter((user: PlayersLogtime) => uuid === user.uuid).shift()?.username ??
-				uuid,
-		);
+			return {
+				uuid: logtimes.uuid,
+				uuids: logtimes.uuids,
+				logtimes: logtimes.logtimes,
+				usernames: usernames,
+				time: logtimes.time,
+			};
+		},
+		// sessions: async (
+		// 	sessions: PlayersSessions[],
+		// ): Promise<PlayersSessionsMapped[] | null> => {
+		// 	this.logger.debug(
+		// 		`${colors.pink}[mapUUIDtoUsernames]${colors.green} Mapping UUIDs to usernames`,
+		// 	);
 
-		return {
-			uuid: logtimes.uuid,
-			uuids: logtimes.uuids,
-			logtimes: logtimes.logtimes,
-			usernames: usernames,
-			time: logtimes.time,
-		};
-	}
+		// 	const users = await this.playersLogtimeRepo
+		// 		.createQueryBuilder('users')
+		// 		.select('users.uuid', 'users.username')
+		// 		.getMany()
+		// 		.catch((e) => {
+		// 			this.logger.error(`Unable to get users`, e);
+		// 			return null;
+		// 		});
+
+		// 	if (!users || !users.length) {
+		// 		return null;
+		// 	}
+
+		// 	sessions.map((uuid: string) =>
+		// 		users.filter((user: PlayersLogtime) => uuid === user.uuid).shift()?.username ?? uuid,
+		// 	);
+		// }
+	};
 }
