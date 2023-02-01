@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 
 import { ChartsModdedController, ChartsVanillaController } from '../app/app.controller';
+import colors from 'src/utils/colors';
 
 export function controllerLoader(): Array<any> {
 	const logger = new Logger('controllerLoader');
@@ -27,7 +28,7 @@ export function controllerLoader(): Array<any> {
 	}
 
 	if (!controllers.length) {
-		logger.error(`No controller available.`);
+		logger.error(`${colors.pink}[controllerLoader]${colors.red} No controller available`);
 		process.exit(1);
 	}
 

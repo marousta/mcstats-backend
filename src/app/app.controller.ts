@@ -1,9 +1,11 @@
 import { Controller, Get, Request } from '@nestjs/common';
+
 import { AppService } from '../services/app.service';
+import { ChartsService } from '../services/charts.service';
 
 @Controller()
 export class AppController {
-	constructor() {}
+	constructor(private readonly appService: AppService) {}
 
 	@Get('ping')
 	ping() {
@@ -12,47 +14,57 @@ export class AppController {
 
 	@Get('stats')
 	stats(@Request() req: any) {
-		console.log(req.times);
 		return req.times;
 	}
 
 	@Get('server/status')
-	serverStatus() {}
+	serverStatus() {
+		return this.appService.serverStatus();
+	}
 
 	@Get('players/online')
-	playersOnline() {}
+	playersOnline() {
+		return this.appService.playersOnline();
+	}
 }
 
 @Controller('charts/vanilla')
 export class ChartsVanillaController {
-	constructor(private readonly appService: AppService) {}
+	constructor(private readonly ChartsService: ChartsService) {}
 
 	@Get('server/uptime')
-	uptime() {}
+	async uptime() {
+		return await this.ChartsService.uptime();
+	}
 
 	@Get('players/max')
-	playersMax() {}
-
-	@Get('players/logtime')
-	playersLogtime() {}
+	async playersMax() {
+		return await this.ChartsService.playersMax();
+	}
 
 	@Get('players/history')
-	playersLogtimeHistory() {}
+	async playersLogtimeHistory() {
+		return await this.ChartsService.playersLogtimeHistory();
+	}
 }
 
+//TODO:
 @Controller('charts/modded')
 export class ChartsModdedController {
-	constructor(private readonly appService: AppService) {}
+	constructor(private readonly ChartsService: ChartsService) {}
 
 	@Get('server/uptime')
-	uptime() {}
+	async uptime() {
+		return await this.ChartsService.uptime();
+	}
 
 	@Get('players/max')
-	playersMax() {}
-
-	@Get('players/logtime')
-	playersLogtime() {}
+	async playersMax() {
+		return await this.ChartsService.playersMax();
+	}
 
 	@Get('players/history')
-	playersLogtimeHistory() {}
+	async playersLogtimeHistory() {
+		return await this.ChartsService.playersLogtimeHistory();
+	}
 }

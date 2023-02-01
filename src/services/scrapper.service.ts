@@ -62,9 +62,11 @@ export class ScrapperService {
 			!this.fetchers.players.length &&
 			!this.fetchers.bedrock.length
 		) {
-			this.logger.error('No avaliable servers to fetch data from.');
-			this.logger.error('Check your config.');
-			process.exit();
+			this.logger.error(
+				`${colors.pink}[constructor]${colors.red} No avaliable servers to fetch data from`,
+			);
+			this.logger.error(`${colors.pink}[constructor]${colors.red}Check your config`);
+			process.exit(1);
 		}
 	}
 
@@ -120,8 +122,10 @@ export class ScrapperService {
 		 * ]
 		 */
 		const sessions = await this.dbService.get.player.session();
-		//FIXME
 		if (!sessions) {
+			this.logger.error(
+				`${colors.pink}[initActivesSessions]${colors.red} Unable to get players sessions from database`,
+			);
 			process.exit(1);
 		}
 		return sessions;
@@ -137,7 +141,7 @@ export class ScrapperService {
 			this.actives_sessions = await this.initActivesSessions();
 			this.actives_sessions?.forEach((session: PlayersSessions) => {
 				this.logger.log(
-					`${colors.end}${session.user.username} is ${colors.green}connected${colors.end} based on last data.`,
+					`${colors.end}${session.user.username} is ${colors.green}connected${colors.end} based on last data`,
 				);
 			});
 		}
@@ -392,7 +396,7 @@ export class ScrapperService {
 				.shift() as PlayersSessions;
 			const was = new time.getTime(user.logtime - old_session?.user.logtime).logtime();
 
-			this.logger.log(`${colors.end}${user.username} was logged ${was}.`);
+			this.logger.log(`${colors.end}${user.username} was logged ${was}`);
 		}
 		if (error) {
 			return false;

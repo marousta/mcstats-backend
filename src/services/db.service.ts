@@ -51,7 +51,10 @@ export class DBService {
 					.select()
 					.getMany()
 					.catch((e) => {
-						this.logger.error(`Unable to get online players`, e);
+						this.logger.error(
+							`${colors.pink}[get.history.online]${colors.red} Unable to get online players`,
+							e,
+						);
 						return null;
 					});
 			},
@@ -65,7 +68,10 @@ export class DBService {
 					.select()
 					.getMany()
 					.catch((e) => {
-						this.logger.error(`Unable to get players logtime history`, e);
+						this.logger.error(
+							`${colors.pink}[get.history.logtime]${colors.red} Unable to get players logtime history`,
+							e,
+						);
 						return null;
 					});
 			},
@@ -93,13 +99,18 @@ export class DBService {
 					.catch((e) => {
 						if (user) {
 							this.logger.error(
-								`Unable to get player session${
+								`${colors.pink}[get.player.session]${
+									colors.red
+								} Unable to get player session${
 									user ? ` for ${user.username} (${user.uuid})` : ''
 								}`,
 								e,
 							);
 						} else {
-							this.logger.error(`Unable to get players sessions`, e);
+							this.logger.error(
+								`${colors.pink}[get.player.session]${colors.red} Unable to get players sessions`,
+								e,
+							);
 						}
 						return null;
 					});
@@ -117,7 +128,10 @@ export class DBService {
 						.select()
 						.getMany()
 						.catch((e) => {
-							this.logger.error(`Unable to get players logtimes`, e);
+							this.logger.debug(
+								`${colors.pink}[get.player.user]${colors.green} Unable to get players logtimes`,
+								e,
+							);
 							return null;
 						});
 				} else {
@@ -127,8 +141,10 @@ export class DBService {
 						.where(where)
 						.getOne()
 						.catch((e) => {
-							this.logger.error(
-								`Unable to get player logtime where ${JSON.stringify(where)}`,
+							this.logger.debug(
+								`${colors.pink}[get.player.user]${
+									colors.green
+								} Unable to get player logtime where ${JSON.stringify(where)}`,
 								e,
 							);
 							return null;
@@ -147,13 +163,16 @@ export class DBService {
 					.select()
 					.getMany()
 					.catch((e) => {
-						this.logger.error(`Unable to get server uptime history`, e);
+						this.logger.debug(
+							`${colors.pink}[get.server.uptime]${colors.green} Unable to get server uptime history`,
+							e,
+						);
 						return null;
 					});
 			},
 			lastUptime: async (): Promise<ServerUptime | null> => {
 				this.logger.debug(
-					`${colors.pink}[get.server.uptime]${colors.green} Getting server uptime`,
+					`${colors.pink}[get.server.lastUptime]${colors.green} Getting server uptime`,
 				);
 
 				return this.serverUptimeRepo
@@ -162,7 +181,10 @@ export class DBService {
 					.orderBy('time', 'DESC')
 					.getOne()
 					.catch((e) => {
-						this.logger.error(`Unable to get server uptime`, e);
+						this.logger.debug(
+							`${colors.pink}[get.server.lastUptime]${colors.green} Unable to get server uptime`,
+							e,
+						);
 						return null;
 					});
 			},
@@ -190,7 +212,10 @@ export class DBService {
 					value,
 				});
 				return this.historyPlayersOnlineRepo.save(entity).catch((e) => {
-					this.logger.error(`Unable to create online players history`, e);
+					this.logger.debug(
+						`${colors.pink}[create.history.online]${colors.green} Unable to create online players history`,
+						e,
+					);
 					return null;
 				});
 			},
@@ -221,7 +246,10 @@ export class DBService {
 					time,
 				});
 				return this.historyPlayersLogtimeRepo.save(entity).catch((e) => {
-					this.logger.error(`Unable to create players logtimes history`, e);
+					this.logger.debug(
+						`${colors.pink}[create.history.logtime]${colors.green} Unable to create players logtimes history`,
+						e,
+					);
 					return null;
 				});
 			},
@@ -237,8 +265,8 @@ export class DBService {
 					user,
 				});
 				return this.playersSessionsRepo.save(entity).catch((e) => {
-					this.logger.error(
-						`Unable to create player session for ${user.username} (${user.uuid})`,
+					this.logger.debug(
+						`${colors.pink}[create.player.session]${colors.green} Unable to create player session for ${user.username} (${user.uuid})`,
 						e,
 					);
 					return null;
@@ -255,8 +283,8 @@ export class DBService {
 					logtime: 0,
 				});
 				return this.playersLogtimeRepo.save(entity).catch((e) => {
-					this.logger.error(
-						`Unable to create player logtime for ${username} (${uuid})`,
+					this.logger.debug(
+						`${colors.pink}[create.player.logtime]${colors.green} Unable to create player logtime for ${username} (${uuid})`,
 						e,
 					);
 					return null;
@@ -276,7 +304,10 @@ export class DBService {
 					value,
 				});
 				return this.serverUptimeRepo.save(entity).catch((e) => {
-					this.logger.error(`Unable to create server uptime ${time}`, e);
+					this.logger.debug(
+						`${colors.pink}[create.server.uptime]${colors.green} Unable to create server uptime ${time}`,
+						e,
+					);
 					return null;
 				});
 			},
@@ -355,7 +386,7 @@ export class DBService {
 		player: {
 			logtime: async (user: PlayersLogtime, value: number): Promise<PlayersLogtime> => {
 				this.logger.debug(
-					`${colors.pink}[update.logtime]${colors.green} Updating logtime for ${
+					`${colors.pink}[update.player.logtime]${colors.green} Updating logtime for ${
 						user.username
 					} from ${user.logtime} to ${value} (${value - user.logtime})`,
 				);
@@ -371,13 +402,13 @@ export class DBService {
 			},
 			username: async (user: PlayersLogtime, username: string): Promise<PlayersLogtime> => {
 				this.logger.debug(
-					`${colors.pink}[update.username]${colors.green} Updating username from ${user.username} to ${username}`,
+					`${colors.pink}[update.player.username]${colors.green} Updating username from ${user.username} to ${username}`,
 				);
 
 				user.username = username;
 				return this.playersLogtimeRepo.save(user).catch((e) => {
-					this.logger.error(
-						`Unable to update player username for ${user.username} (${user.uuid})`,
+					this.logger.debug(
+						`${colors.pink}[update.player.username]${colors.green} Unable to update player username for ${user.username} (${user.uuid})`,
 						e,
 					);
 					return user;
@@ -398,8 +429,8 @@ export class DBService {
 				.where({ user })
 				.execute()
 				.catch((e) => {
-					this.logger.error(
-						`Unable to delete player session for ${user.username} (${user.uuid})`,
+					this.logger.debug(
+						`${colors.pink}[delete.session]${colors.green} Unable to delete player session for ${user.username} (${user.uuid})`,
 						e,
 					);
 					return null;
@@ -427,7 +458,10 @@ export class DBService {
 				return r.data;
 			})
 			.catch((e): PlayerDBMinecraftFailover => {
-				this.logger.error(`Unable to get mojang uuid for ${username}`, e);
+				this.logger.debug(
+					`${colors.pink}[getMojangUUID]${colors.green} Unable to get mojang uuid for ${username}`,
+					e,
+				);
 				return {
 					success: false,
 				};
@@ -451,13 +485,16 @@ export class DBService {
 			.select('users.uuid', 'users.username')
 			.getMany()
 			.catch((e) => {
-				this.logger.error(`Unable to get users`, e);
+				this.logger.debug(
+					`${colors.pink}[initTranslationTable]${colors.green} Unable to get users`,
+					e,
+				);
 				return null;
 			});
 
 		if (!users) {
 			this.logger.error(
-				'Unable to create translation table for converting Mojang UUIDs to usernames.',
+				`${colors.pink}[initTranslationTable]${colors.green} Unable to create translation table for converting Mojang UUIDs to usernames`,
 			);
 			process.exit(1);
 		}

@@ -22,6 +22,7 @@ import { PlayersLogtime } from 'src/entities/players/logtime.entity';
 import { ServerUptime } from 'src/entities/server_uptime.entity';
 
 import { controllerLoader } from 'src/utils/controllers_loader';
+import { ChartsService } from '../services/charts.service';
 
 const controllers = [AppController, ...controllerLoader()];
 
@@ -57,7 +58,7 @@ const controllers = [AppController, ...controllerLoader()];
 		]),
 	],
 	controllers,
-	providers: [AppService, DBService, ScrapperService, AppGateway],
+	providers: [AppService, DBService, ScrapperService, ChartsService, AppGateway],
 })
 export class AppModule {
 	configure(consumer: MiddlewareConsumer) {

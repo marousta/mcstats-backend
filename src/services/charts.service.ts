@@ -17,19 +17,6 @@ export class ChartsService {
 		private readonly scrapperService: ScrapperService,
 	) {}
 
-	serverStatus() {
-		return this.scrapperService.getServerState();
-	}
-
-	playersOnline() {
-		const players_sessions = this.scrapperService.getActivesSessions();
-		if (!players_sessions) {
-			return [];
-		}
-
-		return players_sessions.map((sessions) => sessions.user.username);
-	}
-
 	async uptime(): Promise<ResponseHistoryServerUptime[]> {
 		const server_uptime = await this.dbService.get.server.uptime();
 
@@ -94,7 +81,7 @@ export class ChartsService {
 
 		if (!players_sessions) {
 			this.logger.warn(
-				`${colors.pink}[playersLogtimeHistory]${colors.yellow} Unable to get actives sessions. Current logtimes will not be up to date.`,
+				`${colors.pink}[playersLogtimeHistory]${colors.yellow} Unable to get actives sessions. Current logtimes will not be up to date`,
 			);
 		}
 
