@@ -13,6 +13,7 @@ import { PlayersLogtime } from 'src/entities/players/logtime.entity';
 
 import colors from 'src/utils/colors';
 import * as time from 'src/utils/time';
+import * as utils from 'src/utils/utils';
 
 @Injectable()
 export class ScrapperService {
@@ -339,16 +340,13 @@ export class ScrapperService {
 		return true;
 	}
 
-	private calcLogtime(session: number, current: number): number {
-		const timestamp = time.getTimestamp();
-		const logtime = timestamp - session + current;
-		return logtime;
-	}
-
 	async createLogtime(session: PlayersSessions) {
 		// calc logtime
 		const session_start_timestamp = new time.getTime(session.connection_time).timestamp();
-		const new_logtime: number = this.calcLogtime(session_start_timestamp, session.user.logtime);
+		const new_logtime: number = utils.calcLogtime(
+			session_start_timestamp,
+			session.user.logtime,
+		);
 
 		// updating
 		return this.dbService.update.player.logtime(session.user, new_logtime);
@@ -428,5 +426,13 @@ export class ScrapperService {
 		});
 
 		return { state: 'success' };
+	}
+
+	getActivesSessions(): PlayersSessions[] | null {
+		return this.actives_sessions;
+	}
+
+	getServerState(): boolean {
+		return this.server_state;
 	}
 }

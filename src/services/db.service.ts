@@ -201,7 +201,9 @@ export class DBService {
 					`${colors.pink}[create.history.logtime]${colors.green} Creating create players logtime history for ${time}`,
 				);
 
-				const current_logtimes = (await this.get.player.logtime({})) as PlayersLogtime[];
+				const current_logtimes = (await this.get.player.logtime({})) as
+					| PlayersLogtime[]
+					| null;
 				if (!current_logtimes) {
 					return null;
 				}
@@ -289,7 +291,7 @@ export class DBService {
 
 			let user: PlayersLogtime | null = (await this.get.player.logtime({
 				username,
-			})) as PlayersLogtime;
+			})) as PlayersLogtime | null;
 			if (user) {
 				this.logger.debug(
 					`${colors.pink}[create.user]${colors.green} User already exist for ${username}`,
@@ -322,7 +324,7 @@ export class DBService {
 				`${colors.pink}[create.user]${colors.green} Checking if user already exist for ${uuid}`,
 			);
 
-			user = (await this.get.player.logtime({ uuid })) as PlayersLogtime;
+			user = (await this.get.player.logtime({ uuid })) as PlayersLogtime | null;
 			if (user) {
 				this.logger.debug(
 					`${colors.pink}[create.user]${colors.green} User already exist for ${uuid}`,
@@ -437,31 +439,56 @@ export class DBService {
 		return PlayerDB.data.player.id;
 	}
 
+	public translation_table: { [key: string]: string } = {};
+
+	async initTranslationTable(): Promise<void> {
+		if (Object.keys(this.translation_table).length) {
+			return;
+		}
+
+		const users = await this.playersLogtimeRepo
+			.createQueryBuilder('users')
+			.select('users.uuid', 'users.username')
+			.getMany()
+			.catch((e) => {
+				this.logger.error(`Unable to get users`, e);
+				return null;
+			});
+
+		if (!users) {
+			this.logger.error(
+				'Unable to create translation table for converting Mojang UUIDs to usernames.',
+			);
+			process.exit(1);
+		}
+
+		users.forEach((user) => (this.translation_table[user.uuid] = user.username));
+	}
+
 	public readonly mapUsernames = {
+		arrayLogtimeHistory: async (
+			logtimes: HistoryPlayersLogtime[],
+		): Promise<HistoryPlayersLogtimeMapped[]> => {
+			this.logger.debug(
+				`${colors.pink}[arrayLogtimeHistory]${colors.green} Mapping UUIDs to usernames`,
+			);
+
+			const promises: Promise<HistoryPlayersLogtimeMapped>[] = [];
+			logtimes.forEach((history) => promises.push(this.mapUsernames.logtimeHistory(history)));
+
+			return await Promise.all(promises);
+		},
 		logtimeHistory: async (
 			logtimes: HistoryPlayersLogtime,
-		): Promise<HistoryPlayersLogtimeMapped | null> => {
+		): Promise<HistoryPlayersLogtimeMapped> => {
 			this.logger.debug(
 				`${colors.pink}[mapUUIDtoUsernames]${colors.green} Mapping UUIDs to usernames`,
 			);
 
-			const users = await this.playersLogtimeRepo
-				.createQueryBuilder('users')
-				.select('users.uuid', 'users.username')
-				.getMany()
-				.catch((e) => {
-					this.logger.error(`Unable to get users`, e);
-					return null;
-				});
-
-			if (!users || !users.length) {
-				return null;
-			}
+			await this.initTranslationTable();
 
 			const usernames = logtimes.uuids.map(
-				(uuid: string) =>
-					users.filter((user: PlayersLogtime) => uuid === user.uuid).shift()?.username ??
-					uuid,
+				(uuid: string) => this.translation_table[uuid] ?? uuid,
 			);
 
 			return {
