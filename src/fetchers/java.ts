@@ -20,6 +20,8 @@ export class FetcherJava {
 		const query = await mc
 			.queryFull(this.MC_HOST, this.MC_QUERY_PORT, { timeout: 3000 })
 			.catch((e) => {
+				this.logger.debug(`[fetch] `, e);
+
 				if (
 					!e.message.includes('received 0') && // UDP timeout ignore
 					!e.message.includes('Timed out') &&

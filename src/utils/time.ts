@@ -5,7 +5,7 @@ export class getTime {
 	date: any;
 	format: any;
 
-	constructor(date: number | Date) {
+	constructor(date: number | Date = new Date()) {
 		if (date === undefined) {
 			throw new Error('undefined value date');
 		}

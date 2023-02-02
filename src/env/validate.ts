@@ -1,11 +1,8 @@
-import colors from '../utils/colors';
+import { Logger } from '@nestjs/common';
 
 export default class {
+	private readonly logger = new Logger('validateEnv');
 	error = false;
-
-	private log(text: string) {
-		console.error(colors.red + text + colors.end);
-	}
 
 	private checkProtocol(protocol: string) {
 		return protocol === 'http' || protocol == 'https';
@@ -15,7 +12,7 @@ export default class {
 		const value: string | undefined = process.env[variable];
 
 		if (!value || value === '') {
-			this.log('env ' + variable + ' is missing.');
+			this.logger.error('env ' + variable + ' is missing.');
 			this.error = true;
 			return null;
 		}
@@ -25,7 +22,9 @@ export default class {
 	private readonly checks = {
 		protocol: (variable: string, value: string) => {
 			if (variable === 'PROTOCOL' && !this.checkProtocol(value)) {
-				this.log('Invalid ' + variable + ', expected http or https, got ' + value + '.');
+				this.logger.error(
+					'Invalid ' + variable + ', expected http or https, got ' + value + '.',
+				);
 				this.error = true;
 				return false;
 			}
@@ -33,7 +32,7 @@ export default class {
 		},
 		port: (variable: string, value: string) => {
 			if (variable === 'PORT' && !this.checkProtocol(value)) {
-				this.log(
+				this.logger.error(
 					'Invalid ' +
 						variable +
 						', expected value between 1 and 65,535, got ' +
@@ -47,7 +46,7 @@ export default class {
 		},
 		nan: (variable: string, value: string) => {
 			if (isNaN(parseInt(value))) {
-				this.log(variable + ' should be a number.');
+				this.logger.error(variable + ' should be a number.');
 				this.error = true;
 				return false;
 			}
@@ -55,7 +54,7 @@ export default class {
 		},
 		boolean: (variable: string, value: string) => {
 			if (value !== 'true' && value !== 'false') {
-				this.log(variable + ' should be a boolean.');
+				this.logger.error(variable + ' should be a boolean.');
 				this.error = true;
 				return false;
 			}
@@ -77,7 +76,7 @@ export default class {
 			case 'boolean':
 				return this.checks.boolean(variable, value);
 			default:
-				this.log(variable + ' type is unknown.');
+				this.logger.error(variable + ' type is unknown.');
 				this.error = true;
 				return false;
 		}
@@ -86,7 +85,7 @@ export default class {
 
 	result() {
 		if (this.error) {
-			this.log('\nMissing arguments.\n');
+			this.logger.error('\nMissing arguments.\n');
 			process.exit(1);
 		}
 	}

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -20,22 +20,22 @@ import {
 } from '../types';
 import colors from 'src/utils/colors';
 
-@Injectable()
 export class DBService {
-	private readonly logger = new Logger(DBService.name);
+	private readonly axios_user_agent = this.configService.get<string>('USER_AGENT');
 
 	constructor(
+		private readonly logger: Logger,
 		private readonly configService: ConfigService,
 		private readonly httpService: HttpService,
-		@InjectRepository(HistoryPlayersLogtime)
+		@InjectRepository(HistoryPlayersLogtime, 'bedrock')
 		private readonly historyPlayersLogtimeRepo: Repository<HistoryPlayersLogtime>,
-		@InjectRepository(HistoryPlayersOnline)
+		@InjectRepository(HistoryPlayersOnline, 'bedrock')
 		private readonly historyPlayersOnlineRepo: Repository<HistoryPlayersOnline>,
-		@InjectRepository(PlayersLogtime)
+		@InjectRepository(PlayersLogtime, 'bedrock')
 		private readonly playersLogtimeRepo: Repository<PlayersLogtime>,
-		@InjectRepository(PlayersSessions)
+		@InjectRepository(PlayersSessions, 'bedrock')
 		private readonly playersSessionsRepo: Repository<PlayersSessions>,
-		@InjectRepository(ServerUptime)
+		@InjectRepository(ServerUptime, 'bedrock')
 		private readonly serverUptimeRepo: Repository<ServerUptime>,
 	) {}
 
@@ -115,7 +115,9 @@ export class DBService {
 						return null;
 					});
 			},
-			logtime: async (where: Object): Promise<PlayersLogtime | PlayersLogtime[] | null> => {
+			logtime: async (
+				where: Object = {},
+			): Promise<PlayersLogtime | PlayersLogtime[] | null> => {
 				this.logger.debug(
 					`${colors.pink}[get.player.user]${
 						colors.green
@@ -170,7 +172,7 @@ export class DBService {
 						return null;
 					});
 			},
-			lastUptime: async (): Promise<ServerUptime | null> => {
+			lastUptime: async (): Promise<ServerUptime | false | null> => {
 				this.logger.debug(
 					`${colors.pink}[get.server.lastUptime]${colors.green} Getting server uptime`,
 				);
@@ -180,6 +182,7 @@ export class DBService {
 					.select()
 					.orderBy('time', 'DESC')
 					.getOne()
+					.then((r) => (r ? r : false))
 					.catch((e) => {
 						this.logger.debug(
 							`${colors.pink}[get.server.lastUptime]${colors.green} Unable to get server uptime`,
@@ -200,6 +203,29 @@ export class DBService {
 
 	public readonly create = {
 		history: {
+			logtime: async (
+				uuids: string[],
+				logtimes: number[],
+			): Promise<HistoryPlayersLogtime | null> => {
+				const time = new Date();
+
+				this.logger.debug(
+					`${colors.pink}[create.history.logtime]${colors.green} Creating create players logtime history for ${time}`,
+				);
+
+				const entity = this.historyPlayersLogtimeRepo.create({
+					uuids,
+					logtimes,
+					time,
+				});
+				return this.historyPlayersLogtimeRepo.save(entity).catch((e) => {
+					this.logger.debug(
+						`${colors.pink}[create.history.logtime]${colors.green} Unable to create players logtimes history`,
+						e,
+					);
+					return null;
+				});
+			},
 			online: async (value: number): Promise<HistoryPlayersOnline | null> => {
 				const time = new Date();
 
@@ -214,40 +240,6 @@ export class DBService {
 				return this.historyPlayersOnlineRepo.save(entity).catch((e) => {
 					this.logger.debug(
 						`${colors.pink}[create.history.online]${colors.green} Unable to create online players history`,
-						e,
-					);
-					return null;
-				});
-			},
-			logtime: async (): Promise<HistoryPlayersLogtime | null> => {
-				const time = new Date();
-
-				this.logger.debug(
-					`${colors.pink}[create.history.logtime]${colors.green} Creating create players logtime history for ${time}`,
-				);
-
-				const current_logtimes = (await this.get.player.logtime({})) as
-					| PlayersLogtime[]
-					| null;
-				if (!current_logtimes) {
-					return null;
-				}
-
-				let uuids: string[] = [];
-				let logtimes: number[] = [];
-				current_logtimes.map((logtime: PlayersLogtime) => {
-					uuids.push(logtime.uuid);
-					logtimes.push(logtime.logtime);
-				});
-
-				const entity = this.historyPlayersLogtimeRepo.create({
-					uuids,
-					logtimes,
-					time,
-				});
-				return this.historyPlayersLogtimeRepo.save(entity).catch((e) => {
-					this.logger.debug(
-						`${colors.pink}[create.history.logtime]${colors.green} Unable to create players logtimes history`,
 						e,
 					);
 					return null;
@@ -449,7 +441,7 @@ export class DBService {
 				url: 'https://playerdb.co/api/player/minecraft/' + username,
 				method: 'get',
 				headers: {
-					'User-Agent': this.configService.get<string>('USER_AGENT'),
+					'User-Agent': this.axios_user_agent,
 					'Accept-Encoding': 'application/json',
 				},
 				responseType: 'json',
@@ -482,7 +474,7 @@ export class DBService {
 
 		const users = await this.playersLogtimeRepo
 			.createQueryBuilder('users')
-			.select('users.uuid', 'users.username')
+			.select(['users.uuid', 'users.username'])
 			.getMany()
 			.catch((e) => {
 				this.logger.debug(
@@ -500,6 +492,8 @@ export class DBService {
 		}
 
 		users.forEach((user) => (this.translation_table[user.uuid] = user.username));
+
+		console.log(this.translation_table, users);
 	}
 
 	public readonly mapUsernames = {

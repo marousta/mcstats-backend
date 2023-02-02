@@ -10,8 +10,9 @@ import { AppController } from 'src/app/app.controller';
 import { AppGateway } from 'src/app/app.gateway';
 
 import { AppService } from 'src/services/app.service';
-import { DBService } from 'src/services/db.service';
 import { ScrapperService } from 'src/services/scrapper.service';
+import { JavaDBService } from 'src/database/implemtations.service';
+import { ChartsService } from '../services/charts.service';
 
 import { ResponseTimeMiddleware } from 'src/middlewares/time.middleware';
 
@@ -22,19 +23,15 @@ import { PlayersLogtime } from 'src/entities/players/logtime.entity';
 import { ServerUptime } from 'src/entities/server_uptime.entity';
 
 import { controllerLoader } from 'src/utils/controllers_loader';
-import { ChartsService } from '../services/charts.service';
 
 const controllers = [AppController, ...controllerLoader()];
 
-@Module({
-	imports: [
-		HttpModule,
-		ConfigModule.forRoot({
-			isGlobal: true,
-		}),
+function typeorm($schema) {
+	return [
 		TypeOrmModule.forRootAsync({
 			imports: [ConfigModule],
 			inject: [ConfigService],
+			name: $schema,
 			useFactory: (configService: ConfigService) => ({
 				type: 'postgres',
 				host: configService.get<string>('PSQL_HOST'),
@@ -45,20 +42,35 @@ const controllers = [AppController, ...controllerLoader()];
 				entities: ['dist/**/*.entity{.ts,.js}'],
 				synchronize: configService.get<boolean>('PSQL_SYNC'),
 				namingStrategy: new SnakeNamingStrategy(),
-				migrations: ['dist/database-migration/*{.ts,.js}'],
 				logging: true,
+				schema: $schema,
 			}),
 		}),
-		TypeOrmModule.forFeature([
-			HistoryPlayersLogtime,
-			PlayersLogtime,
-			HistoryPlayersOnline,
-			PlayersSessions,
-			ServerUptime,
-		]),
+		TypeOrmModule.forFeature(
+			[
+				HistoryPlayersLogtime,
+				PlayersLogtime,
+				HistoryPlayersOnline,
+				PlayersSessions,
+				ServerUptime,
+			],
+			$schema,
+		),
+	];
+}
+
+@Module({
+	imports: [
+		HttpModule,
+		ConfigModule.forRoot({
+			isGlobal: true,
+		}),
+		...typeorm('java'),
+		...typeorm('bedrock'),
+		...typeorm('modded'),
 	],
 	controllers,
-	providers: [AppService, DBService, ScrapperService, ChartsService, AppGateway],
+	providers: [AppService, JavaDBService, ScrapperService, ChartsService, AppGateway],
 })
 export class AppModule {
 	configure(consumer: MiddlewareConsumer) {

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DeleteResult } from 'typeorm';
 
-import { DBService } from './db.service';
+import { JavaDBService } from 'src/database/implemtations.service';
 
 import { FetcherJava } from 'src/fetchers/java';
 import { FetcherBedrock } from 'src/fetchers/bedrock';
@@ -32,7 +32,10 @@ export class ScrapperService {
 		bedrock: [],
 	};
 
-	constructor(private readonly config: ConfigService, private readonly dbService: DBService) {
+	constructor(
+		private readonly config: ConfigService,
+		private readonly javaDBService: JavaDBService,
+	) {
 		const MC_HOST: string = this.config.get<string>('MC_HOST') ?? '';
 		const MC_QUERY_PORT: number = this.config.get<number>('MC_QUERY_PORT') ?? 0;
 		const MC_RCON_PORT: number = this.config.get<number>('MC_RCON_PORT') ?? 0;
@@ -68,19 +71,27 @@ export class ScrapperService {
 			this.logger.error(`${colors.pink}[constructor]${colors.red}Check your config`);
 			process.exit(1);
 		}
+
+		this.scrap();
 	}
 
 	private async updateServerStatus(status: boolean): Promise<boolean> {
 		// get previous server status
-		const uptime = await this.dbService.get.server.uptime();
-		if (!uptime) {
+		const uptime = await this.javaDBService.get.server.lastUptime();
+		if (uptime === null) {
+			this.logger.error(
+				`${colors.pink}[updateServerStatus]${colors.red} #1 Unable to get server uptime`,
+			);
 			return false;
 		}
 
 		// no database entry create one based on current server status
-		if (!uptime.length) {
-			const created = await this.dbService.create.server.uptime(status);
+		if (uptime === false) {
+			const created = await this.javaDBService.create.server.uptime(status);
 			if (!created) {
+				this.logger.error(
+					`${colors.pink}[updateServerStatus]${colors.red} #2 Unable to update server uptime`,
+				);
 				return false;
 			}
 			// TODO: websocket.sendUptime({
@@ -91,23 +102,27 @@ export class ScrapperService {
 		}
 
 		// server database already up to date, nothing to do
-		if (uptime.pop()?.value === status) {
+		if (uptime.value === status) {
 			return true;
 		}
 
 		// server status differ from database, updating ..
-		const created = await this.dbService.create.server.uptime(status);
+		const created = await this.javaDBService.create.server.uptime(status);
 		if (!created) {
+			this.logger.error(
+				`${colors.pink}[updateServerStatus]${colors.red} #3 Unable to update server uptime`,
+			);
 			return false;
 		}
 		// TODO: websocket.sendUptime({
 		// 	state: status,
 		// 	timestamp: time.getTimestamp(),
+
 		// });
 		return true;
 	}
 
-	private async initActivesSessions() {
+	private async initActivesSessions(): Promise<PlayersSessions[]> {
 		/**
 		 * sessions: [
 		 * 		PlayersSessions {
@@ -121,7 +136,7 @@ export class ScrapperService {
 		 * 		}
 		 * ]
 		 */
-		const sessions = await this.dbService.get.player.session();
+		const sessions = await this.javaDBService.get.player.session();
 		if (!sessions) {
 			this.logger.error(
 				`${colors.pink}[initActivesSessions]${colors.red} Unable to get players sessions from database`,
@@ -132,11 +147,12 @@ export class ScrapperService {
 	}
 
 	private actives_sessions: PlayersSessions[] | null = null;
-	private server_state: boolean = true;
+	private server_state: boolean = false;
+	// private server_up_since: Date = new Date();
 	private retry: number = 0;
 	private max_active_players: number = 0;
 
-	async scrapper() {
+	async scrapper(): Promise<ResponseScrapper | null> {
 		if (this.actives_sessions === null) {
 			this.actives_sessions = await this.initActivesSessions();
 			this.actives_sessions?.forEach((session: PlayersSessions) => {
@@ -147,7 +163,6 @@ export class ScrapperService {
 		}
 
 		const active_players_list = await this.fetchers.players[0]?.fetch();
-
 		const player_names = active_players_list ?? [];
 
 		// check server status and create new status if it was previously offline
@@ -157,18 +172,22 @@ export class ScrapperService {
 
 			this.logger.log(`${colors.end}Server is ${colors.green}up${colors.end}!`);
 
-			let ret = await this.dbService.create.server.uptime(this.server_state);
-			if (!ret) {
-				return false;
+			const online = await this.updateServerStatus(true);
+			if (!online) {
+				this.logger.error(
+					`${colors.pink}[scrapper]${colors.red} Unable to update server uptime to up`,
+				);
+				return null;
 			}
 		}
 
 		// retrying request n times
 		if (!active_players_list && this.server_state && this.retry != this.QUERY_RETRY) {
 			this.retry++;
-			this.logger.warn(`Server not responding`);
+			this.logger.warn(`${colors.pink}[scrapper]${colors.yellow} Server not responding`);
 			return null;
 		}
+
 		// server offline closing sessions and updating logtimes
 		if (!active_players_list && this.retry == this.QUERY_RETRY) {
 			this.retry = 0;
@@ -176,26 +195,34 @@ export class ScrapperService {
 
 			this.logger.log(`${colors.end}Server is ${colors.red}down${colors.end}!`);
 
-			let ret = await this.dbService.create.server.uptime(this.server_state);
-			if (!ret) {
-				return false;
+			const offline = await this.updateServerStatus(false);
+			if (!offline) {
+				this.logger.error(
+					`${colors.pink}[scrapper]${colors.red} Unable to update server uptime to down`,
+				);
+				return null;
 			}
 
 			const end_sessions = await this.endSessions(player_names);
 			if (!end_sessions) {
+				this.logger.error(
+					`${colors.pink}[scrapper]${colors.red} Unable to terminate sessions`,
+				);
 				return null;
 			}
 
 			// dispatch server disconnected
 			return {
 				timestamp: time.getTimestamp(),
-				serverStatus: {
-					online: this.server_state,
-					since: time.getTimestamp(),
+				server: {
+					state: this.server_state,
+					// since: time.getTimestamp(),
 				},
-				connected: [],
-				playersOnline: 0,
-				maxPlayersOnline: this.max_active_players,
+				players: {
+					online: 0,
+					usernames: [],
+					max_active_players: this.max_active_players,
+				},
 			};
 		}
 
@@ -208,15 +235,19 @@ export class ScrapperService {
 
 		if (this.server_state && player_names.length != this.actives_sessions.length) {
 			const new_sessions = await this.newSessions(player_names);
-			if (!new_sessions) {
+			if (new_sessions === null) {
+				this.logger.error(
+					`${colors.pink}[scrapper]${colors.red} Unable to create sessions`,
+				);
 				return null;
 			}
 
 			const end_sessions = await this.endSessions(player_names);
-			if (!end_sessions) {
+			if (end_sessions === null) {
+				this.logger.error(`${colors.pink}[scrapper]${colors.red} Unable to end sessions`);
 				return null;
 			}
-			this.actives_sessions = await this.initActivesSessions();
+			// this.actives_sessions = await this.initActivesSessions();
 		}
 
 		// increment max_active_players
@@ -225,33 +256,29 @@ export class ScrapperService {
 			this.max_active_players = active_players;
 		}
 
-		// dispatch new / removed users
-		const since = await this.dbService.get.server.lastUptime();
-		if (!since) {
-			return null;
-		}
+		// const since = await this.dbService.get.server.lastUptime();
+		// if (since === null) {
+		// return null;
+		// }
+
+		// this.server_up_since = since ? since.time : new Date()
 
 		return {
 			timestamp: time.getTimestamp(),
 			server: {
 				state: this.server_state,
-				since: since.time,
+				// since: new time.getTime(this.server_up_since).timestamp(),
 			},
 			players: {
 				online: player_names.length,
-				names: player_names || [],
+				usernames: player_names || [],
 				max_active_players: this.max_active_players,
 			},
 		};
 	}
 
-	async newUsers(player_names: Array<string> = []) {
-		// No online players
-		if (!this.actives_sessions || !this.actives_sessions.length) {
-			return null;
-		}
-
-		const actives_sessions = this.actives_sessions;
+	async newUsers(player_names: Array<string>): Promise<PlayersLogtime[] | null> {
+		const actives_sessions = this.actives_sessions ?? [];
 
 		// return usernames with no user
 		const diff = player_names.filter((username) => {
@@ -260,39 +287,33 @@ export class ScrapperService {
 			) {
 				return false;
 			}
-			return null;
+			return true;
 		});
 
 		// create new users
 		const promises: Promise<PlayersLogtime | null>[] = [];
 		diff.forEach((username) =>
-			username ? promises.push(this.dbService.create.user(username)) : 0,
+			username ? promises.push(this.javaDBService.create.user(username)) : 0,
 		);
 		const new_users = await Promise.all(promises);
 
 		// check promise result
 		let error = false;
-		for (const user of new_users) {
-			if (!user) {
-				error = true;
-				continue;
-			}
-			this.logger.log(`${user.username} is now in database!`);
-		}
+		new_users.forEach((user) => (!user ? (error = true) : 0));
 		if (error) {
 			return null;
 		}
 
-		return new_users;
+		return new_users as PlayersLogtime[];
 	}
 
-	async newSessions(player_names: Array<string> = []) {
+	async newSessions(player_names: Array<string>): Promise<boolean | null> {
 		// No online players
-		if (!this.actives_sessions || !this.actives_sessions.length) {
+		if (!player_names.length) {
 			return false;
 		}
 
-		const actives_sessions = this.actives_sessions;
+		const actives_sessions = this.actives_sessions ?? [];
 
 		// players joined
 		if (player_names.length < actives_sessions.length) {
@@ -302,7 +323,7 @@ export class ScrapperService {
 		// create new users if needed
 		const new_users = await this.newUsers(player_names);
 		if (!new_users) {
-			return false;
+			return null;
 		}
 
 		// Only new online players
@@ -319,7 +340,7 @@ export class ScrapperService {
 		// create sessions
 		const promises: Promise<PlayersSessions | null>[] = [];
 		diff.forEach((user) =>
-			user ? promises.push(this.dbService.create.player.session(user)) : 0,
+			user ? promises.push(this.javaDBService.create.player.session(user)) : 0,
 		);
 		const new_sessions = await Promise.all(promises);
 
@@ -335,7 +356,7 @@ export class ScrapperService {
 			);
 		}
 		if (error) {
-			return false;
+			return null;
 		}
 
 		//FIXME
@@ -344,7 +365,7 @@ export class ScrapperService {
 		return true;
 	}
 
-	async createLogtime(session: PlayersSessions) {
+	async createLogtime(session: PlayersSessions): Promise<PlayersLogtime> {
 		// calc logtime
 		const session_start_timestamp = new time.getTime(session.connection_time).timestamp();
 		const new_logtime: number = utils.calcLogtime(
@@ -353,18 +374,14 @@ export class ScrapperService {
 		);
 
 		// updating
-		return this.dbService.update.player.logtime(session.user, new_logtime);
+		return this.javaDBService.update.player.logtime(session.user, new_logtime);
 	}
 
-	async endSessions(player_names: Array<string>) {
-		// No online players
-		if (!this.actives_sessions || !this.actives_sessions.length) {
-			return false;
-		}
+	async endSessions(player_names: Array<string>): Promise<boolean | null> {
+		const actives_sessions =
+			this.actives_sessions?.filter((x) => !player_names.includes(x.user.username)) ?? [];
 
-		const actives_sessions = this.actives_sessions;
-
-		// players joined
+		// players left
 		if (player_names.length > actives_sessions.length) {
 			return false;
 		}
@@ -385,27 +402,30 @@ export class ScrapperService {
 
 		// check promise result
 		let error = false;
-		for (const user of updated_users) {
+		updated_users.forEach((user) => {
 			if (!user) {
 				error = true;
-				continue;
+				return;
 			}
 
 			const old_session = diff
 				.filter((session) => session.user.username === user.username)
 				.shift() as PlayersSessions;
-			const was = new time.getTime(user.logtime - old_session?.user.logtime).logtime();
+
+			const was = new time.getTime(
+				time.getTimestamp() - new time.getTime(old_session.connection_time).timestamp(),
+			).logtime();
 
 			this.logger.log(`${colors.end}${user.username} was logged ${was}`);
-		}
+		});
 		if (error) {
-			return false;
+			return null;
 		}
 
 		// remove sessions
 		const promises_sessions: Promise<DeleteResult | null>[] = [];
 		diff.forEach((session) =>
-			promises_sessions.push(this.dbService.delete.session(session.user)),
+			promises_sessions.push(this.javaDBService.delete.session(session.user)),
 		);
 		const deleted_sessions = await Promise.all(promises_sessions);
 
@@ -422,15 +442,137 @@ export class ScrapperService {
 			this.logger.log(`${colors.end}${username} is ${colors.red}disconnected${colors.end}!`);
 		}
 		if (error) {
-			return false;
+			return null;
 		}
 
-		this.actives_sessions = this.actives_sessions.filter((original) => {
+		this.actives_sessions = actives_sessions.filter((original) => {
 			!diff.map((removed) => original.uuid === removed.uuid).includes(true);
 		});
 
-		return { state: 'success' };
+		return true;
 	}
+
+	private data: ResponseScrapper;
+
+	async scrap() {
+		setInterval(async () => {
+			const scrapped = await this.scrapper();
+			if (!scrapped) {
+				return;
+			}
+			this.logger.verbose(`${colors.pink}[interval.scrap]${colors.cyan} OK`);
+			this.data = scrapped;
+		}, 3000);
+		setInterval(async () => {
+			// fetchJavaInfos();
+			// fetchBedrockInfos();
+
+			const t = new time.getTime().half().split(':');
+			const hours = parseInt(t[0]);
+			const mins = parseInt(t[1]);
+
+			// create logtime history each days at 12:00pm
+			if (hours === 0 && mins === 0) {
+				const logtime = await this.save.history.logtime();
+				if (!logtime) {
+					this.logger.error(
+						`${colors.pink}[save.history.logtime]${colors.red} Failed to create players logtimes history`,
+					);
+				}
+			}
+
+			// create max players online history every 6 hours
+			if (hours % 6 || (hours % 6 === 0 && mins % 60)) {
+				return;
+			}
+			const online = this.save.history.online();
+			if (!online) {
+				this.logger.error(
+					`${colors.pink}[save.history.online]${colors.red} Failed to create max players online history`,
+				);
+			}
+		}, 60000);
+	}
+
+	private readonly save = {
+		history: {
+			logtime: async () => {
+				let logtimes = (await this.javaDBService.get.player.logtime()) as
+					| PlayersLogtime[]
+					| null;
+
+				if (!logtimes) {
+					this.logger.error(
+						`${colors.pink}[save.history.logtime]${colors.red} Failed to get players logtimes history`,
+					);
+					return false;
+				}
+
+				// No logtimes to save yet
+				if (!logtimes.length) {
+					return true;
+				}
+
+				// sort by username asc
+				logtimes = logtimes.sort((a, b) => {
+					if (a.username.toLowerCase() < b.username.toLowerCase()) {
+						return -1;
+					}
+					if (a.username.toLowerCase() > b.username.toLowerCase()) {
+						return 1;
+					}
+					return 0;
+				});
+				const actives_sessions =
+					this.actives_sessions?.sort((a, b) => {
+						if (a.user.username.toLowerCase() < b.user.username.toLowerCase()) {
+							return -1;
+						}
+						if (a.user.username.toLowerCase() > b.user.username.toLowerCase()) {
+							return 1;
+						}
+						return 0;
+					}) ?? [];
+
+				const history_uuids: string[] = logtimes.map((user) => user.uuid);
+				const history_logtimes: number[] = logtimes.map((user) => user.logtime);
+
+				// update logtimes with current logtimes from actives sessions
+				for (const i in history_uuids) {
+					for (const session of actives_sessions) {
+						if (session.user.uuid === history_uuids[i]) {
+							history_logtimes[i] = utils.calcLogtime(
+								new time.getTime(session.connection_time).timestamp(),
+								session.user.logtime,
+							);
+						}
+					}
+				}
+
+				const created = await this.javaDBService.create.history.logtime(
+					history_uuids,
+					history_logtimes,
+				);
+
+				return created ? true : false;
+			},
+			online: async () => {
+				this.logger.log(
+					`${colors.pink}[updatePlayersOnline]${colors.end} current: [ ${
+						this.actives_sessions ? this.actives_sessions.length : 0
+					} / 60 ] max: ${this.max_active_players}`,
+				);
+				const online = await this.javaDBService.create.history.online(
+					this.max_active_players,
+				);
+				if (!online) {
+					return false;
+				}
+				this.max_active_players = 0;
+				return true;
+			},
+		},
+	};
 
 	getActivesSessions(): PlayersSessions[] | null {
 		return this.actives_sessions;
@@ -439,4 +581,21 @@ export class ScrapperService {
 	getServerState(): boolean {
 		return this.server_state;
 	}
+}
+
+export interface ResponsePlayersOnline {
+	online: number;
+	usernames: string[];
+	max_active_players: number;
+}
+
+export interface ResponseServerStatus {
+	state: boolean;
+	// since: number;
+}
+
+export interface ResponseScrapper {
+	timestamp: number;
+	server: ResponseServerStatus;
+	players: ResponsePlayersOnline;
 }

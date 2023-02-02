@@ -29,6 +29,8 @@ export class FetcherPlayers {
 				});
 			}
 		} catch (e: any) {
+			this.logger.debug(`[rconConnect] `, e);
+
 			if (
 				!e.message.includes('ECONNREFUSED') &&
 				!e.message.includes('getaddrinfo EAI_AGAIN minecraft') &&
@@ -40,7 +42,7 @@ export class FetcherPlayers {
 	}
 
 	async fetch(): Promise<string[] | null> {
-		this.rconConnect();
+		await this.rconConnect();
 
 		if (this.RCON === null) {
 			return null;
