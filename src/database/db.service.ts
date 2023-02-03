@@ -1,24 +1,24 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
-import { InjectRepository } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
 
 import {
 	HistoryPlayersLogtime,
 	HistoryPlayersLogtimeMapped,
-} from '../entities/history/logtime.entity';
-import { HistoryPlayersOnline } from '../entities/history/online.entity';
-import { PlayersLogtime } from '../entities/players/logtime.entity';
-import { PlayersSessions } from '../entities/players/sessions.entity';
-import { ServerUptime } from '../entities/server_uptime.entity';
+} from 'src/entities/history/logtime.entity';
+import { HistoryPlayersOnline } from 'src/entities/history/online.entity';
+import { PlayersLogtime } from 'src/entities/players/logtime.entity';
+import { PlayersSessions } from 'src/entities/players/sessions.entity';
+import { ServerUptime } from 'src/entities/server_uptime.entity';
 
+import colors from 'src/utils/colors';
 import {
 	PlayerDBMinecraftFailover,
 	PlayerDBMinecraftFailure,
 	PlayerDBMinecraftSuccess,
-} from '../types';
-import colors from 'src/utils/colors';
+} from 'src/types';
 
 export class DBService {
 	private readonly axios_user_agent = this.configService.get<string>('USER_AGENT');
@@ -27,15 +27,10 @@ export class DBService {
 		private readonly logger: Logger,
 		private readonly configService: ConfigService,
 		private readonly httpService: HttpService,
-		@InjectRepository(HistoryPlayersLogtime, 'bedrock')
 		private readonly historyPlayersLogtimeRepo: Repository<HistoryPlayersLogtime>,
-		@InjectRepository(HistoryPlayersOnline, 'bedrock')
 		private readonly historyPlayersOnlineRepo: Repository<HistoryPlayersOnline>,
-		@InjectRepository(PlayersLogtime, 'bedrock')
 		private readonly playersLogtimeRepo: Repository<PlayersLogtime>,
-		@InjectRepository(PlayersSessions, 'bedrock')
 		private readonly playersSessionsRepo: Repository<PlayersSessions>,
-		@InjectRepository(ServerUptime, 'bedrock')
 		private readonly serverUptimeRepo: Repository<ServerUptime>,
 	) {}
 
@@ -328,16 +323,26 @@ export class DBService {
 			this.logger.debug(
 				`${colors.pink}[create.user]${colors.green} User ${username} not existing `,
 			);
-			this.logger.debug(
-				`${colors.pink}[create.user]${colors.green} Retrieving ${username} UUID`,
-			);
 
-			const uuid = await this.getMojangUUID(username);
-			if (!uuid) {
+			// Bedrock players
+			let uuid: string | null = null;
+			if (username[0] === '.') {
 				this.logger.debug(
-					`${colors.pink}[create.user]${colors.green} Failed to retrieve ${username} UUID`,
+					`${colors.pink}[create.user]${colors.green} Generating ${username} UUID`,
 				);
-				return null;
+				uuid = randomUUID();
+			} else {
+				// Java players
+				this.logger.debug(
+					`${colors.pink}[create.user]${colors.green} Retrieving ${username} UUID`,
+				);
+				uuid = await this.getMojangUUID(username);
+				if (!uuid) {
+					this.logger.debug(
+						`${colors.pink}[create.user]${colors.green} Failed to retrieve ${username} UUID`,
+					);
+					return null;
+				}
 			}
 
 			/**

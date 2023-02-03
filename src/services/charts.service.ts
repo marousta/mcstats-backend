@@ -1,24 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { JavaDBService } from 'src/database/implemtations.service';
-import { ScrapperService } from './scrapper.service';
 
-import { PlayersLogtime } from '../entities/players/logtime.entity';
+import { ModdedDBService, VanillaDBService } from 'src/database/implemtations.service';
+import { ScrapperModdedService, ScrapperVanillaService } from './scrapper.service';
+
+import { PlayersLogtime } from 'src/entities/players/logtime.entity';
 
 import colors from 'src/utils/colors';
 import * as time from 'src/utils/time';
 import * as utils from 'src/utils/utils';
 
-@Injectable()
-export class ChartsService {
-	private readonly logger = new Logger(ChartsService.name);
+import {
+	ResponseHistoryPlayersLogtimes,
+	ResponseHistoryPlayersMaxOnline,
+	ResponseHistoryServerUptime,
+} from './types';
 
+export class ChartsService {
 	constructor(
-		private readonly javaDBService: JavaDBService,
-		private readonly scrapperService: ScrapperService,
+		private readonly logger: Logger,
+		private readonly DBService: VanillaDBService | ModdedDBService,
+		private readonly scrapperService: ScrapperVanillaService | ScrapperModdedService,
 	) {}
 
 	async uptime(): Promise<ResponseHistoryServerUptime[]> {
-		const server_uptime = await this.javaDBService.get.server.uptime();
+		const server_uptime = await this.DBService.get.server.uptime();
 
 		if (!server_uptime) {
 			return [
@@ -52,7 +57,7 @@ export class ChartsService {
 	}
 
 	async playersMax(): Promise<ResponseHistoryPlayersMaxOnline[]> {
-		const history_online = await this.javaDBService.get.history.online();
+		const history_online = await this.DBService.get.history.online();
 
 		if (!history_online) {
 			return [];
@@ -69,8 +74,8 @@ export class ChartsService {
 	}
 
 	async playersLogtimeHistory(): Promise<ResponseHistoryPlayersLogtimes[]> {
-		const players_logtimes = await this.javaDBService.get.history.logtime();
-		const users_logtime = (await this.javaDBService.get.player.logtime({})) as
+		const players_logtimes = await this.DBService.get.history.logtime();
+		const users_logtime = (await this.DBService.get.player.logtime({})) as
 			| PlayersLogtime[]
 			| null;
 		const players_sessions = this.scrapperService.getActivesSessions();
@@ -85,7 +90,7 @@ export class ChartsService {
 			);
 		}
 
-		const players_logtime_mapped = await this.javaDBService.mapUsernames.arrayLogtimeHistory(
+		const players_logtime_mapped = await this.DBService.mapUsernames.arrayLogtimeHistory(
 			players_logtimes,
 		);
 
@@ -151,23 +156,16 @@ export class ChartsService {
 	}
 }
 
-export interface ResponseHistoryServerUptime {
-	up: number;
-	down: number;
+@Injectable()
+export class ChartsVanillaService extends ChartsService {
+	constructor(DBService: VanillaDBService, scrapperService: ScrapperVanillaService) {
+		super(new Logger(ChartsVanillaService.name), DBService, scrapperService);
+	}
 }
 
-export interface ResponseHistoryPlayersMaxOnline {
-	date: Date;
-	value: number;
-}
-
-export interface HistoryPlayersLogtimes {
-	date: Date;
-	value: number;
-}
-
-export interface ResponseHistoryPlayersLogtimes {
-	username: string;
-	data: HistoryPlayersLogtimes[];
-	current: number;
+@Injectable()
+export class ChartsModdedService extends ChartsService {
+	constructor(DBService: VanillaDBService, scrapperService: ScrapperModdedService) {
+		super(new Logger(ChartsModdedService.name), DBService, scrapperService);
+	}
 }

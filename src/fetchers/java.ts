@@ -1,45 +1,58 @@
 import { Logger } from '@nestjs/common';
-import mc from 'minecraft-server-util';
+import { queryFull } from 'minecraft-server-util';
 
 import colors from 'src/utils/colors';
+import skipError from 'src/utils/skip_error';
+
+import { ServerKind } from 'src/types';
+import { ResponseServerKind } from 'src/services/types';
 
 export class FetcherJava {
 	private readonly logger = new Logger(FetcherJava.name);
 
 	private readonly MC_HOST: string;
 	private readonly MC_QUERY_PORT: number;
+	private readonly kind: ServerKind;
 
-	private VANILLA_VERSION = '';
+	private version: string;
 
-	constructor(MC_HOST: string, MC_QUERY_PORT: number) {
+	constructor(kind: ServerKind, MC_HOST: string, MC_QUERY_PORT: number) {
+		this.kind = kind;
 		this.MC_HOST = MC_HOST;
 		this.MC_QUERY_PORT = MC_QUERY_PORT;
 	}
 
-	async fetch() {
-		const query = await mc
-			.queryFull(this.MC_HOST, this.MC_QUERY_PORT, { timeout: 3000 })
-			.catch((e) => {
+	async fetch(): Promise<ResponseServerKind | null> {
+		const query = await queryFull(this.MC_HOST, this.MC_QUERY_PORT, { timeout: 3000 }).catch(
+			(e) => {
 				this.logger.debug(`[fetch] `, e);
 
-				if (
-					!e.message.includes('received 0') && // UDP timeout ignore
-					!e.message.includes('Timed out') &&
-					!e.message.includes('getaddrinfo EAI_AGAIN minecraft')
-				) {
+				if (skipError(e.message)) {
 					this.logger.error(`${colors.pink}[fetch]${colors.red} `, e);
 				}
 				return null;
-			});
+			},
+		);
 
 		if (!query) {
-			return false;
+			return null;
 		}
-		if (this.VANILLA_VERSION != query.version) {
-			this.VANILLA_VERSION = query.version;
+		if (this.version !== query.version) {
+			this.version = query.version;
 			//TODO: websocket.sendVersion(this.VANILLA_VERSION, this.BEDROCK_VERSION);
-			this.logger.log('Java version updated!');
+			this.logger.log(
+				`Java ${
+					this.kind === ServerKind.Vanilla
+						? 'Vanilla'
+						: this.kind === ServerKind.Modded
+						? 'Modded'
+						: '???'
+				} version updated!`,
+			);
 		}
-		return true;
+		return {
+			type: 'java',
+			version: this.version,
+		};
 	}
 }

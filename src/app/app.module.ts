@@ -10,9 +10,9 @@ import { AppController } from 'src/app/app.controller';
 import { AppGateway } from 'src/app/app.gateway';
 
 import { AppService } from 'src/services/app.service';
-import { ScrapperService } from 'src/services/scrapper.service';
-import { JavaDBService } from 'src/database/implemtations.service';
-import { ChartsService } from '../services/charts.service';
+import { VanillaDBService, ModdedDBService } from 'src/database/implemtations.service';
+import { ScrapperModdedService, ScrapperVanillaService } from 'src/services/scrapper.service';
+import { ChartsModdedService, ChartsVanillaService } from 'src/services/charts.service';
 
 import { ResponseTimeMiddleware } from 'src/middlewares/time.middleware';
 
@@ -42,15 +42,15 @@ function typeorm($schema) {
 				entities: ['dist/**/*.entity{.ts,.js}'],
 				synchronize: configService.get<boolean>('PSQL_SYNC'),
 				namingStrategy: new SnakeNamingStrategy(),
-				logging: true,
+				logging: false,
 				schema: $schema,
 			}),
 		}),
 		TypeOrmModule.forFeature(
 			[
 				HistoryPlayersLogtime,
-				PlayersLogtime,
 				HistoryPlayersOnline,
+				PlayersLogtime,
 				PlayersSessions,
 				ServerUptime,
 			],
@@ -65,12 +65,20 @@ function typeorm($schema) {
 		ConfigModule.forRoot({
 			isGlobal: true,
 		}),
-		...typeorm('java'),
-		...typeorm('bedrock'),
+		...typeorm('vanilla'),
 		...typeorm('modded'),
 	],
 	controllers,
-	providers: [AppService, JavaDBService, ScrapperService, ChartsService, AppGateway],
+	providers: [
+		AppService,
+		VanillaDBService,
+		ModdedDBService,
+		ScrapperVanillaService,
+		ScrapperModdedService,
+		ChartsVanillaService,
+		ChartsModdedService,
+		AppGateway,
+	],
 })
 export class AppModule {
 	configure(consumer: MiddlewareConsumer) {

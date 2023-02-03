@@ -1,7 +1,7 @@
 import { Controller, Get, Request } from '@nestjs/common';
 
-import { AppService } from '../services/app.service';
-import { ChartsService } from '../services/charts.service';
+import { AppService } from 'src/services/app.service';
+import { ChartsModdedService, ChartsVanillaService } from 'src/services/charts.service';
 
 @Controller()
 export class AppController {
@@ -30,7 +30,7 @@ export class AppController {
 
 @Controller('charts/vanilla')
 export class ChartsVanillaController {
-	constructor(private readonly ChartsService: ChartsService) {}
+	constructor(private readonly ChartsService: ChartsVanillaService) {}
 
 	@Get('server/uptime')
 	async uptime() {
@@ -48,10 +48,9 @@ export class ChartsVanillaController {
 	}
 }
 
-//TODO:
 @Controller('charts/modded')
 export class ChartsModdedController {
-	constructor(private readonly ChartsService: ChartsService) {}
+	constructor(private readonly ChartsService: ChartsModdedService) {}
 
 	@Get('server/uptime')
 	async uptime() {

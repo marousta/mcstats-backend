@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DeleteResult } from 'typeorm';
 
-import { JavaDBService } from 'src/database/implemtations.service';
+import { VanillaDBService, ModdedDBService } from 'src/database/implemtations.service';
 
 import { FetcherJava } from 'src/fetchers/java';
 import { FetcherBedrock } from 'src/fetchers/bedrock';
@@ -15,56 +15,77 @@ import colors from 'src/utils/colors';
 import * as time from 'src/utils/time';
 import * as utils from 'src/utils/utils';
 
-@Injectable()
-export class ScrapperService {
-	private readonly logger = new Logger(ScrapperService.name);
+import { ServerKind } from 'src/types';
+import { ResponseServerKind, ResponseScrapper, ResponseScrapperData } from 'src/services/types';
 
-	private readonly WEBSOCKET_PORT: number = this.config.get<number>('WEBSOCKET_PORT') ?? 0;
-	private readonly QUERY_RETRY: number = this.config.get<number>('QUERY_RETRY') ?? 0;
+export class ScrapperService {
+	// private readonly WEBSOCKET_PORT: number = this.config.get<number>('WEBSOCKET_PORT') ?? 0;
+	private readonly QUERY_RETRY: number;
 
 	private readonly fetchers: {
-		players: FetcherPlayers[];
-		java: FetcherJava[];
-		bedrock: FetcherBedrock[];
+		java: FetcherJava | null;
+		bedrock: FetcherBedrock | null;
+		players: FetcherPlayers | null;
 	} = {
-		players: [],
-		java: [],
-		bedrock: [],
+		players: null,
+		java: null,
+		bedrock: null,
 	};
 
 	constructor(
+		private readonly logger: Logger,
 		private readonly config: ConfigService,
-		private readonly javaDBService: JavaDBService,
+		private readonly DBService: VanillaDBService | ModdedDBService,
+		private readonly kind: ServerKind,
 	) {
-		const MC_HOST: string = this.config.get<string>('MC_HOST') ?? '';
-		const MC_QUERY_PORT: number = this.config.get<number>('MC_QUERY_PORT') ?? 0;
-		const MC_RCON_PORT: number = this.config.get<number>('MC_RCON_PORT') ?? 0;
-		const MC_RCON_PASSWORD: string = this.config.get<string>('MC_RCON_PASSWORD') ?? '';
-		const MC_MOD_HOST: string = this.config.get<string>('MC_MOD_HOST') ?? '';
-		const MC_MOD_QUERY_PORT: number = this.config.get<number>('MC_MOD_QUERY_PORT') ?? 0;
-		const MC_MOD_RCON_PORT: number = this.config.get<number>('MC_MOD_RCON_PORT') ?? 0;
-		const MC_MOD_RCON_PASSWORD: string = this.config.get<string>('MC_MOD_RCON_PASSWORD') ?? '';
-		const MC_BEDROCK_HOST: string = this.config.get<string>('MC_BEDROCK_HOST') ?? '';
-		const MC_BEDROCK_PORT: number = this.config.get<number>('MC_BEDROCK_PORT') ?? 0;
+		this.QUERY_RETRY = this.config.get<number>('QUERY_RETRY') ?? 0;
+		this.QUERY_RETRY = +this.QUERY_RETRY;
 
-		if (MC_HOST && MC_QUERY_PORT && MC_RCON_PORT && MC_RCON_PASSWORD) {
-			this.fetchers.java.push(new FetcherJava(MC_HOST, MC_QUERY_PORT));
-			this.fetchers.players.push(new FetcherPlayers(MC_HOST, MC_RCON_PORT, MC_RCON_PASSWORD));
+		if (this.kind === ServerKind.Vanilla) {
+			const MC_HOST: string = this.config.get<string>('MC_HOST') ?? '';
+			const MC_QUERY_PORT: number = this.config.get<number>('MC_QUERY_PORT') ?? 0;
+			const MC_RCON_PORT: number = this.config.get<number>('MC_RCON_PORT') ?? 0;
+			const MC_RCON_PASSWORD: string = this.config.get<string>('MC_RCON_PASSWORD') ?? '';
+			const MC_BEDROCK_HOST: string = this.config.get<string>('MC_BEDROCK_HOST') ?? '';
+			const MC_BEDROCK_PORT: number = this.config.get<number>('MC_BEDROCK_PORT') ?? 0;
+
+			if (MC_HOST && +MC_QUERY_PORT && +MC_RCON_PORT && MC_RCON_PASSWORD) {
+				this.fetchers.java = new FetcherJava(ServerKind.Vanilla, MC_HOST, +MC_QUERY_PORT);
+				this.fetchers.players = new FetcherPlayers(
+					ServerKind.Vanilla,
+					MC_HOST,
+					+MC_RCON_PORT,
+					MC_RCON_PASSWORD,
+				);
+			}
+			if (MC_BEDROCK_HOST && +MC_BEDROCK_PORT) {
+				this.fetchers.bedrock = new FetcherBedrock(MC_BEDROCK_HOST, +MC_BEDROCK_PORT);
+			}
 		}
-		if (MC_MOD_HOST && MC_MOD_QUERY_PORT && MC_MOD_RCON_PORT && MC_MOD_RCON_PASSWORD) {
-			this.fetchers.java.push(new FetcherJava(MC_MOD_HOST, MC_MOD_QUERY_PORT));
-			this.fetchers.players.push(
-				new FetcherPlayers(MC_MOD_HOST, MC_MOD_RCON_PORT, MC_MOD_RCON_PASSWORD),
-			);
+
+		if (this.kind === ServerKind.Modded) {
+			const MC_MOD_HOST: string = this.config.get<string>('MC_MOD_HOST') ?? '';
+			const MC_MOD_QUERY_PORT: number = this.config.get<number>('MC_MOD_QUERY_PORT') ?? 0;
+			const MC_MOD_RCON_PORT: number = this.config.get<number>('MC_MOD_RCON_PORT') ?? 0;
+			const MC_MOD_RCON_PASSWORD: string =
+				this.config.get<string>('MC_MOD_RCON_PASSWORD') ?? '';
+
+			if (MC_MOD_HOST && +MC_MOD_QUERY_PORT && +MC_MOD_RCON_PORT && MC_MOD_RCON_PASSWORD) {
+				this.fetchers.java = new FetcherJava(
+					ServerKind.Modded,
+					MC_MOD_HOST,
+					+MC_MOD_QUERY_PORT,
+				);
+				this.fetchers.players = new FetcherPlayers(
+					ServerKind.Modded,
+					MC_MOD_HOST,
+					+MC_MOD_RCON_PORT,
+					MC_MOD_RCON_PASSWORD,
+				);
+			}
 		}
-		if (MC_BEDROCK_HOST && MC_BEDROCK_PORT && MC_MOD_RCON_PORT && MC_MOD_RCON_PASSWORD) {
-			this.fetchers.bedrock.push(new FetcherBedrock(MC_BEDROCK_HOST, MC_BEDROCK_PORT));
-		}
-		if (
-			!this.fetchers.java.length &&
-			!this.fetchers.players.length &&
-			!this.fetchers.bedrock.length
-		) {
+
+		if (!this.fetchers.java || !this.fetchers.players) {
 			this.logger.error(
 				`${colors.pink}[constructor]${colors.red} No avaliable servers to fetch data from`,
 			);
@@ -77,7 +98,7 @@ export class ScrapperService {
 
 	private async updateServerStatus(status: boolean): Promise<boolean> {
 		// get previous server status
-		const uptime = await this.javaDBService.get.server.lastUptime();
+		const uptime = await this.DBService.get.server.lastUptime();
 		if (uptime === null) {
 			this.logger.error(
 				`${colors.pink}[updateServerStatus]${colors.red} #1 Unable to get server uptime`,
@@ -87,7 +108,7 @@ export class ScrapperService {
 
 		// no database entry create one based on current server status
 		if (uptime === false) {
-			const created = await this.javaDBService.create.server.uptime(status);
+			const created = await this.DBService.create.server.uptime(status);
 			if (!created) {
 				this.logger.error(
 					`${colors.pink}[updateServerStatus]${colors.red} #2 Unable to update server uptime`,
@@ -107,7 +128,7 @@ export class ScrapperService {
 		}
 
 		// server status differ from database, updating ..
-		const created = await this.javaDBService.create.server.uptime(status);
+		const created = await this.DBService.create.server.uptime(status);
 		if (!created) {
 			this.logger.error(
 				`${colors.pink}[updateServerStatus]${colors.red} #3 Unable to update server uptime`,
@@ -136,7 +157,7 @@ export class ScrapperService {
 		 * 		}
 		 * ]
 		 */
-		const sessions = await this.javaDBService.get.player.session();
+		const sessions = await this.DBService.get.player.session();
 		if (!sessions) {
 			this.logger.error(
 				`${colors.pink}[initActivesSessions]${colors.red} Unable to get players sessions from database`,
@@ -152,7 +173,7 @@ export class ScrapperService {
 	private retry: number = 0;
 	private max_active_players: number = 0;
 
-	async scrapper(): Promise<ResponseScrapper | null> {
+	async scrapper(): Promise<ResponseScrapperData | null> {
 		if (this.actives_sessions === null) {
 			this.actives_sessions = await this.initActivesSessions();
 			this.actives_sessions?.forEach((session: PlayersSessions) => {
@@ -162,7 +183,7 @@ export class ScrapperService {
 			});
 		}
 
-		const active_players_list = await this.fetchers.players[0]?.fetch();
+		const active_players_list = await this.fetchers.players!.fetch();
 		const player_names = active_players_list ?? [];
 
 		// check server status and create new status if it was previously offline
@@ -179,6 +200,8 @@ export class ScrapperService {
 				);
 				return null;
 			}
+
+			await this.fetchServerKind();
 		}
 
 		// retrying request n times
@@ -216,6 +239,7 @@ export class ScrapperService {
 				timestamp: time.getTimestamp(),
 				server: {
 					state: this.server_state,
+					kind: this.server_kind,
 					// since: time.getTimestamp(),
 				},
 				players: {
@@ -267,6 +291,7 @@ export class ScrapperService {
 			timestamp: time.getTimestamp(),
 			server: {
 				state: this.server_state,
+				kind: this.server_kind,
 				// since: new time.getTime(this.server_up_since).timestamp(),
 			},
 			players: {
@@ -293,7 +318,7 @@ export class ScrapperService {
 		// create new users
 		const promises: Promise<PlayersLogtime | null>[] = [];
 		diff.forEach((username) =>
-			username ? promises.push(this.javaDBService.create.user(username)) : 0,
+			username ? promises.push(this.DBService.create.user(username)) : 0,
 		);
 		const new_users = await Promise.all(promises);
 
@@ -340,7 +365,7 @@ export class ScrapperService {
 		// create sessions
 		const promises: Promise<PlayersSessions | null>[] = [];
 		diff.forEach((user) =>
-			user ? promises.push(this.javaDBService.create.player.session(user)) : 0,
+			user ? promises.push(this.DBService.create.player.session(user)) : 0,
 		);
 		const new_sessions = await Promise.all(promises);
 
@@ -374,7 +399,7 @@ export class ScrapperService {
 		);
 
 		// updating
-		return this.javaDBService.update.player.logtime(session.user, new_logtime);
+		return this.DBService.update.player.logtime(session.user, new_logtime);
 	}
 
 	async endSessions(player_names: Array<string>): Promise<boolean | null> {
@@ -425,7 +450,7 @@ export class ScrapperService {
 		// remove sessions
 		const promises_sessions: Promise<DeleteResult | null>[] = [];
 		diff.forEach((session) =>
-			promises_sessions.push(this.javaDBService.delete.session(session.user)),
+			promises_sessions.push(this.DBService.delete.session(session.user)),
 		);
 		const deleted_sessions = await Promise.all(promises_sessions);
 
@@ -452,21 +477,38 @@ export class ScrapperService {
 		return true;
 	}
 
-	private data: ResponseScrapper;
+	private scrapped: ResponseScrapper;
+	private server_kind: ResponseServerKind[] = [];
+
+	async fetchServerKind() {
+		const java = await this.fetchers.java!.fetch();
+		if (!java) {
+			return;
+		}
+		this.server_kind[0] = java;
+
+		const bedrock = await this.fetchers.bedrock?.fetch();
+		if (!bedrock) {
+			return;
+		}
+		this.server_kind[1] = bedrock;
+	}
 
 	async scrap() {
+		await this.fetchServerKind();
+
 		setInterval(async () => {
 			const scrapped = await this.scrapper();
 			if (!scrapped) {
 				return;
 			}
 			this.logger.verbose(`${colors.pink}[interval.scrap]${colors.cyan} OK`);
-			this.data = scrapped;
+			this.scrapped = {
+				vanilla: scrapped,
+				modded: null,
+			};
 		}, 3000);
 		setInterval(async () => {
-			// fetchJavaInfos();
-			// fetchBedrockInfos();
-
 			const t = new time.getTime().half().split(':');
 			const hours = parseInt(t[0]);
 			const mins = parseInt(t[1]);
@@ -497,7 +539,7 @@ export class ScrapperService {
 	private readonly save = {
 		history: {
 			logtime: async () => {
-				let logtimes = (await this.javaDBService.get.player.logtime()) as
+				let logtimes = (await this.DBService.get.player.logtime()) as
 					| PlayersLogtime[]
 					| null;
 
@@ -549,7 +591,7 @@ export class ScrapperService {
 					}
 				}
 
-				const created = await this.javaDBService.create.history.logtime(
+				const created = await this.DBService.create.history.logtime(
 					history_uuids,
 					history_logtimes,
 				);
@@ -562,9 +604,7 @@ export class ScrapperService {
 						this.actives_sessions ? this.actives_sessions.length : 0
 					} / 60 ] max: ${this.max_active_players}`,
 				);
-				const online = await this.javaDBService.create.history.online(
-					this.max_active_players,
-				);
+				const online = await this.DBService.create.history.online(this.max_active_players);
 				if (!online) {
 					return false;
 				}
@@ -581,21 +621,22 @@ export class ScrapperService {
 	getServerState(): boolean {
 		return this.server_state;
 	}
+
+	getScrapped(): ResponseScrapper {
+		return this.scrapped;
+	}
 }
 
-export interface ResponsePlayersOnline {
-	online: number;
-	usernames: string[];
-	max_active_players: number;
+@Injectable()
+export class ScrapperVanillaService extends ScrapperService {
+	constructor(config: ConfigService, DBService: VanillaDBService) {
+		super(new Logger(ScrapperVanillaService.name), config, DBService, ServerKind.Vanilla);
+	}
 }
 
-export interface ResponseServerStatus {
-	state: boolean;
-	// since: number;
-}
-
-export interface ResponseScrapper {
-	timestamp: number;
-	server: ResponseServerStatus;
-	players: ResponsePlayersOnline;
+@Injectable()
+export class ScrapperModdedService extends ScrapperService {
+	constructor(config: ConfigService, DBService: ModdedDBService) {
+		super(new Logger(ScrapperModdedService.name), config, DBService, ServerKind.Modded);
+	}
 }

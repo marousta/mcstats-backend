@@ -4,32 +4,32 @@ import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { HistoryPlayersLogtime } from '../entities/history/logtime.entity';
-import { HistoryPlayersOnline } from '../entities/history/online.entity';
-import { PlayersLogtime } from '../entities/players/logtime.entity';
-import { PlayersSessions } from '../entities/players/sessions.entity';
-import { ServerUptime } from '../entities/server_uptime.entity';
-
 import { DBService } from './db.service';
 
+import { HistoryPlayersLogtime } from 'src/entities/history/logtime.entity';
+import { HistoryPlayersOnline } from 'src/entities/history/online.entity';
+import { PlayersLogtime } from 'src/entities/players/logtime.entity';
+import { PlayersSessions } from 'src/entities/players/sessions.entity';
+import { ServerUptime } from 'src/entities/server_uptime.entity';
+
 @Injectable()
-export class JavaDBService extends DBService {
+export class VanillaDBService extends DBService {
 	constructor(
 		configService: ConfigService,
 		httpService: HttpService,
-		@InjectRepository(HistoryPlayersLogtime, 'java')
+		@InjectRepository(HistoryPlayersLogtime, 'vanilla')
 		historyPlayersLogtimeRepo: Repository<HistoryPlayersLogtime>,
-		@InjectRepository(HistoryPlayersOnline, 'java')
+		@InjectRepository(HistoryPlayersOnline, 'vanilla')
 		historyPlayersOnlineRepo: Repository<HistoryPlayersOnline>,
-		@InjectRepository(PlayersLogtime, 'java')
+		@InjectRepository(PlayersLogtime, 'vanilla')
 		playersLogtimeRepo: Repository<PlayersLogtime>,
-		@InjectRepository(PlayersSessions, 'java')
+		@InjectRepository(PlayersSessions, 'vanilla')
 		playersSessionsRepo: Repository<PlayersSessions>,
-		@InjectRepository(ServerUptime, 'java')
+		@InjectRepository(ServerUptime, 'vanilla')
 		serverUptimeRepo: Repository<ServerUptime>,
 	) {
 		super(
-			new Logger(JavaDBService.name),
+			new Logger(VanillaDBService.name),
 			configService,
 			httpService,
 			historyPlayersLogtimeRepo,
@@ -41,34 +41,7 @@ export class JavaDBService extends DBService {
 	}
 }
 
-export class BedrockDBService extends DBService {
-	constructor(
-		configService: ConfigService,
-		httpService: HttpService,
-		@InjectRepository(HistoryPlayersLogtime, 'bedrock')
-		historyPlayersLogtimeRepo: Repository<HistoryPlayersLogtime>,
-		@InjectRepository(HistoryPlayersOnline, 'bedrock')
-		historyPlayersOnlineRepo: Repository<HistoryPlayersOnline>,
-		@InjectRepository(PlayersLogtime, 'bedrock')
-		playersLogtimeRepo: Repository<PlayersLogtime>,
-		@InjectRepository(PlayersSessions, 'bedrock')
-		playersSessionsRepo: Repository<PlayersSessions>,
-		@InjectRepository(ServerUptime, 'bedrock')
-		serverUptimeRepo: Repository<ServerUptime>,
-	) {
-		super(
-			new Logger(BedrockDBService.name),
-			configService,
-			httpService,
-			historyPlayersLogtimeRepo,
-			historyPlayersOnlineRepo,
-			playersLogtimeRepo,
-			playersSessionsRepo,
-			serverUptimeRepo,
-		);
-	}
-}
-
+@Injectable()
 export class ModdedDBService extends DBService {
 	constructor(
 		configService: ConfigService,

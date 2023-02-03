@@ -1,7 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 
-import { ChartsModdedController, ChartsVanillaController } from '../app/app.controller';
+import { ChartsModdedController, ChartsVanillaController } from 'src/app/app.controller';
+
 import colors from 'src/utils/colors';
 
 export function controllerLoader(): Array<any> {

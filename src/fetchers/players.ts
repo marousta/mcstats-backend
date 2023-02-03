@@ -4,22 +4,26 @@ import * as rconClient from 'rcon-client';
 import colors from 'src/utils/colors';
 import sleep from 'src/utils/sleep';
 
+import { ServerKind } from 'src/types';
+
 export class FetcherPlayers {
 	private readonly logger = new Logger(FetcherPlayers.name);
 
 	private readonly MC_HOST: string;
 	private readonly MC_RCON_PORT: number;
 	private readonly MC_RCON_PASSWORD: string;
+	private readonly kind: ServerKind;
 
 	private RCON: rconClient.Rcon | null = null;
 
-	constructor(MC_HOST: string, MC_RCON_PORT: number, MC_RCON_PASSWORD: string) {
+	constructor(kind: ServerKind, MC_HOST: string, MC_RCON_PORT: number, MC_RCON_PASSWORD: string) {
+		this.kind = kind;
 		this.MC_HOST = MC_HOST;
 		this.MC_RCON_PORT = MC_RCON_PORT;
 		this.MC_RCON_PASSWORD = MC_RCON_PASSWORD;
 	}
 
-	private async rconConnect() {
+	private async rconConnect(): Promise<void> {
 		try {
 			if (this.RCON === null) {
 				this.RCON = await rconClient.Rcon.connect({
@@ -84,7 +88,7 @@ export class FetcherPlayers {
 		 * [There are 0 of a max of 60 players online]: []
 		 * => [""]
 		 */
-		const players = response.split(': ')[1] ?? '';
+		const players = response.trim().split(': ')[1] ?? '';
 		if (
 			players.includes('of a max of 60 players online') ||
 			players.includes('Started tick profiling') ||

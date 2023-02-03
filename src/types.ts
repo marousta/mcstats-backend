@@ -68,3 +68,8 @@ export interface PlayerDBMinecraftFailover extends PlayerDBMinecraftDefault {
 /**
  *
  */
+
+export enum ServerKind {
+	Vanilla,
+	Modded,
+}
