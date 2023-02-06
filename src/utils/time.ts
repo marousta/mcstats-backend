@@ -1,9 +1,9 @@
 export class getTime {
-	time: number;
-	d: Date;
-	months: Array<string>;
-	date: any;
-	format: any;
+	private readonly time: number;
+	private readonly d: Date;
+	private readonly months: Array<string>;
+	private readonly date: any;
+	private readonly format: any;
 
 	constructor(date: number | Date = new Date()) {
 		if (date === undefined) {

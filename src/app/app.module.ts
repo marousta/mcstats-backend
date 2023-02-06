@@ -22,16 +22,16 @@ import { PlayersSessions } from 'src/entities/players/sessions.entity';
 import { PlayersLogtime } from 'src/entities/players/logtime.entity';
 import { ServerUptime } from 'src/entities/server_uptime.entity';
 
-import { controllerLoader } from 'src/utils/controllers_loader';
+import controllerLoader from 'src/utils/controllers_loader';
 
 const controllers = [AppController, ...controllerLoader()];
 
-function typeorm($schema) {
+function typeorm(schema) {
 	return [
 		TypeOrmModule.forRootAsync({
 			imports: [ConfigModule],
 			inject: [ConfigService],
-			name: $schema,
+			name: schema,
 			useFactory: (configService: ConfigService) => ({
 				type: 'postgres',
 				host: configService.get<string>('PSQL_HOST'),
@@ -43,7 +43,7 @@ function typeorm($schema) {
 				synchronize: configService.get<boolean>('PSQL_SYNC'),
 				namingStrategy: new SnakeNamingStrategy(),
 				logging: false,
-				schema: $schema,
+				schema,
 			}),
 		}),
 		TypeOrmModule.forFeature(
@@ -54,7 +54,7 @@ function typeorm($schema) {
 				PlayersSessions,
 				ServerUptime,
 			],
-			$schema,
+			schema,
 		),
 	];
 }

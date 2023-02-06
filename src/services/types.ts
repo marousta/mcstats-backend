@@ -1,3 +1,4 @@
+import { ServerInfos } from '../fetchers/types';
 /**
  * Charts
  */
@@ -33,14 +34,14 @@ export interface ResponsePlayersOnline {
 	max_active_players: number;
 }
 
-export interface ResponseServerKind {
-	type: string;
-	version: string;
+export interface ResponseServerInfos {
+	java: ServerInfos;
+	bedrock: ServerInfos | null;
 }
 
 export interface ResponseServer {
 	state: boolean;
-	kind: ResponseServerKind[];
+	version: ResponseServerInfos;
 	// since: number;
 }
 
@@ -48,9 +49,4 @@ export interface ResponseScrapperData {
 	timestamp: number;
 	server: ResponseServer;
 	players: ResponsePlayersOnline;
-}
-
-export interface ResponseScrapper {
-	vanilla: ResponseScrapperData | null;
-	modded: ResponseScrapperData | null;
 }

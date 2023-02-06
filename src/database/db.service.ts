@@ -497,8 +497,6 @@ export class DBService {
 		}
 
 		users.forEach((user) => (this.translation_table[user.uuid] = user.username));
-
-		console.log(this.translation_table, users);
 	}
 
 	public readonly mapUsernames = {

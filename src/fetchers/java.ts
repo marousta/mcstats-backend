@@ -5,7 +5,7 @@ import colors from 'src/utils/colors';
 import skipError from 'src/utils/skip_error';
 
 import { ServerKind } from 'src/types';
-import { ResponseServerKind } from 'src/services/types';
+import { ServerInfos } from './types';
 
 export class FetcherJava {
 	private readonly logger = new Logger(FetcherJava.name);
@@ -15,6 +15,7 @@ export class FetcherJava {
 	private readonly kind: ServerKind;
 
 	private version: string;
+	private capacity: number;
 
 	constructor(kind: ServerKind, MC_HOST: string, MC_QUERY_PORT: number) {
 		this.kind = kind;
@@ -22,7 +23,7 @@ export class FetcherJava {
 		this.MC_QUERY_PORT = MC_QUERY_PORT;
 	}
 
-	async fetch(): Promise<ResponseServerKind | null> {
+	async fetch(): Promise<ServerInfos | null> {
 		const query = await queryFull(this.MC_HOST, this.MC_QUERY_PORT, { timeout: 3000 }).catch(
 			(e) => {
 				this.logger.debug(`[fetch] `, e);
@@ -39,7 +40,6 @@ export class FetcherJava {
 		}
 		if (this.version !== query.version) {
 			this.version = query.version;
-			//TODO: websocket.sendVersion(this.VANILLA_VERSION, this.BEDROCK_VERSION);
 			this.logger.log(
 				`Java ${
 					this.kind === ServerKind.Vanilla
@@ -50,9 +50,18 @@ export class FetcherJava {
 				} version updated!`,
 			);
 		}
-		return {
-			type: 'java',
-			version: this.version,
-		};
+		if (this.capacity !== query.players.max) {
+			this.capacity = query.players.max;
+			this.logger.log(
+				`Java ${
+					this.kind === ServerKind.Vanilla
+						? 'Vanilla'
+						: this.kind === ServerKind.Modded
+						? 'Modded'
+						: '???'
+				} capacity updated!`,
+			);
+		}
+		return { version: this.version, capacity: this.capacity };
 	}
 }

@@ -165,7 +165,7 @@ export class ChartsVanillaService extends ChartsService {
 
 @Injectable()
 export class ChartsModdedService extends ChartsService {
-	constructor(DBService: VanillaDBService, scrapperService: ScrapperModdedService) {
+	constructor(DBService: ModdedDBService, scrapperService: ScrapperModdedService) {
 		super(new Logger(ChartsModdedService.name), DBService, scrapperService);
 	}
 }

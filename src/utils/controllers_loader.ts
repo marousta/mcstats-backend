@@ -1,11 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 
-import { ChartsModdedController, ChartsVanillaController } from 'src/app/app.controller';
+import { ModdedController, VanillaController } from 'src/app/app.controller';
 
 import colors from 'src/utils/colors';
 
-export function controllerLoader(): Array<any> {
+export default function (): Array<VanillaController | ModdedController> {
 	const logger = new Logger('controllerLoader');
 
 	const config = new ConfigService();
@@ -22,10 +22,10 @@ export function controllerLoader(): Array<any> {
 	const MC_BEDROCK_PORT = config.get<string>('MC_BEDROCK_PORT');
 
 	if ((MC_HOST && MC_QUERY_PORT && MC_RCON_PORT) || (MC_BEDROCK_HOST && MC_BEDROCK_PORT)) {
-		controllers.push(ChartsVanillaController);
+		controllers.push(VanillaController);
 	}
 	if (MC_MOD_HOST && MC_MOD_QUERY_PORT && MC_MOD_RCON_PORT) {
-		controllers.push(ChartsModdedController);
+		controllers.push(ModdedController);
 	}
 
 	if (!controllers.length) {

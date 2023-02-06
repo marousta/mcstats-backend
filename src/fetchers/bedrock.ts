@@ -4,7 +4,7 @@ import { statusBedrock } from 'minecraft-server-util';
 import colors from 'src/utils/colors';
 import skipError from 'src/utils/skip_error';
 
-import { ResponseServerKind } from 'src/services/types';
+import { ServerInfos } from './types';
 
 export class FetcherBedrock {
 	private readonly logger = new Logger(FetcherBedrock.name);
@@ -13,13 +13,14 @@ export class FetcherBedrock {
 	private readonly MC_BEDROCK_PORT: number;
 
 	private version: string;
+	private capacity: number;
 
 	constructor(MC_BEDROCK_HOST: string, MC_BEDROCK_PORT: number) {
 		this.MC_BEDROCK_HOST = MC_BEDROCK_HOST;
 		this.MC_BEDROCK_PORT = MC_BEDROCK_PORT;
 	}
 
-	async fetch(): Promise<ResponseServerKind | null> {
+	async fetch(): Promise<ServerInfos | null> {
 		const query = await statusBedrock(this.MC_BEDROCK_HOST, this.MC_BEDROCK_PORT, {
 			timeout: 3000,
 		}).catch((e) => {
@@ -31,15 +32,14 @@ export class FetcherBedrock {
 		if (!query) {
 			return null;
 		}
-		const version = query.version.name;
-		if (this.version != version) {
-			this.version = version;
-			//TODO: websocket.sendVersion(this.VANILLA_VERSION, this.BEDROCK_VERSION);
+		if (this.version != query.version.name) {
+			this.version = query.version.name;
 			this.logger.log('Bedrock version updated!');
 		}
-		return {
-			type: 'bedrock',
-			version: this.version,
-		};
+		if (this.capacity != query.players.max) {
+			this.capacity = query.players.max;
+			this.logger.log('Bedrock capacity updated!');
+		}
+		return { version: this.version, capacity: this.capacity };
 	}
 }

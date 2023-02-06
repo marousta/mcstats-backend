@@ -16,7 +16,9 @@ import * as time from 'src/utils/time';
 import * as utils from 'src/utils/utils';
 
 import { ServerKind } from 'src/types';
-import { ResponseServerKind, ResponseScrapper, ResponseScrapperData } from 'src/services/types';
+import { ResponseServerInfos, ResponseScrapperData } from 'src/services/types';
+import { AppGateway } from '../app/app.gateway';
+import { WebsocketNamespace, WebsocketPlayersEvent, WebsocketServerEvent } from 'src/app/types';
 
 export class ScrapperService {
 	// private readonly WEBSOCKET_PORT: number = this.config.get<number>('WEBSOCKET_PORT') ?? 0;
@@ -37,6 +39,7 @@ export class ScrapperService {
 		private readonly config: ConfigService,
 		private readonly DBService: VanillaDBService | ModdedDBService,
 		private readonly kind: ServerKind,
+		private readonly websocket: AppGateway,
 	) {
 		this.QUERY_RETRY = this.config.get<number>('QUERY_RETRY') ?? 0;
 		this.QUERY_RETRY = +this.QUERY_RETRY;
@@ -115,10 +118,14 @@ export class ScrapperService {
 				);
 				return false;
 			}
-			// TODO: websocket.sendUptime({
-			// 	state: status,
-			// 	timestamp: time.getTimestamp(),
-			// });
+			this.websocket.dispatch({
+				namespace: WebsocketNamespace.Server,
+				event: WebsocketServerEvent.Status,
+				server: {
+					kind: this.kind,
+					status: this.server_state,
+				},
+			});
 			return true;
 		}
 
@@ -135,11 +142,15 @@ export class ScrapperService {
 			);
 			return false;
 		}
-		// TODO: websocket.sendUptime({
-		// 	state: status,
-		// 	timestamp: time.getTimestamp(),
+		this.websocket.dispatch({
+			namespace: WebsocketNamespace.Server,
+			event: WebsocketServerEvent.Status,
+			server: {
+				kind: this.kind,
+				status: this.server_state,
+			},
+		});
 
-		// });
 		return true;
 	}
 
@@ -201,7 +212,15 @@ export class ScrapperService {
 				return null;
 			}
 
-			await this.fetchServerKind();
+			await this.fetchServerVersion();
+			this.websocket.dispatch({
+				namespace: WebsocketNamespace.Server,
+				event: WebsocketServerEvent.Version,
+				server: {
+					kind: this.kind,
+					version: this.server_infos,
+				},
+			});
 		}
 
 		// retrying request n times
@@ -239,7 +258,7 @@ export class ScrapperService {
 				timestamp: time.getTimestamp(),
 				server: {
 					state: this.server_state,
-					kind: this.server_kind,
+					version: this.server_infos,
 					// since: time.getTimestamp(),
 				},
 				players: {
@@ -271,6 +290,20 @@ export class ScrapperService {
 				this.logger.error(`${colors.pink}[scrapper]${colors.red} Unable to end sessions`);
 				return null;
 			}
+
+			if (new_sessions || end_sessions) {
+				this.websocket.dispatch({
+					namespace: WebsocketNamespace.Players,
+					event: WebsocketPlayersEvent.Change,
+					server: {
+						kind: this.kind,
+					},
+					players: {
+						online: player_names.length,
+						usernames: player_names || [],
+					},
+				});
+			}
 			// this.actives_sessions = await this.initActivesSessions();
 		}
 
@@ -291,7 +324,7 @@ export class ScrapperService {
 			timestamp: time.getTimestamp(),
 			server: {
 				state: this.server_state,
-				kind: this.server_kind,
+				version: this.server_infos,
 				// since: new time.getTime(this.server_up_since).timestamp(),
 			},
 			players: {
@@ -384,7 +417,6 @@ export class ScrapperService {
 			return null;
 		}
 
-		//FIXME
 		this.actives_sessions = [...actives_sessions, ...(new_sessions as PlayersSessions[])];
 
 		return true;
@@ -477,36 +509,39 @@ export class ScrapperService {
 		return true;
 	}
 
-	private scrapped: ResponseScrapper;
-	private server_kind: ResponseServerKind[] = [];
+	private scrapped: ResponseScrapperData;
+	private server_infos: ResponseServerInfos = {
+		java: {
+			version: 'Error',
+			capacity: -1,
+		},
+		bedrock: null,
+	};
 
-	async fetchServerKind() {
+	async fetchServerVersion() {
 		const java = await this.fetchers.java!.fetch();
 		if (!java) {
 			return;
 		}
-		this.server_kind[0] = java;
+		this.server_infos.java = java;
 
 		const bedrock = await this.fetchers.bedrock?.fetch();
 		if (!bedrock) {
 			return;
 		}
-		this.server_kind[1] = bedrock;
+		this.server_infos.bedrock = bedrock;
 	}
 
 	async scrap() {
-		await this.fetchServerKind();
+		await this.fetchServerVersion();
 
 		setInterval(async () => {
 			const scrapped = await this.scrapper();
 			if (!scrapped) {
 				return;
 			}
+			this.scrapped = scrapped;
 			this.logger.verbose(`${colors.pink}[interval.scrap]${colors.cyan} OK`);
-			this.scrapped = {
-				vanilla: scrapped,
-				modded: null,
-			};
 		}, 3000);
 		setInterval(async () => {
 			const t = new time.getTime().half().split(':');
@@ -622,21 +657,37 @@ export class ScrapperService {
 		return this.server_state;
 	}
 
-	getScrapped(): ResponseScrapper {
+	getServerInfos(): ResponseServerInfos {
+		return this.server_infos;
+	}
+
+	getScrapped(): ResponseScrapperData {
 		return this.scrapped;
 	}
 }
 
 @Injectable()
 export class ScrapperVanillaService extends ScrapperService {
-	constructor(config: ConfigService, DBService: VanillaDBService) {
-		super(new Logger(ScrapperVanillaService.name), config, DBService, ServerKind.Vanilla);
+	constructor(config: ConfigService, DBService: VanillaDBService, websocket: AppGateway) {
+		super(
+			new Logger(ScrapperVanillaService.name),
+			config,
+			DBService,
+			ServerKind.Vanilla,
+			websocket,
+		);
 	}
 }
 
 @Injectable()
 export class ScrapperModdedService extends ScrapperService {
-	constructor(config: ConfigService, DBService: ModdedDBService) {
-		super(new Logger(ScrapperModdedService.name), config, DBService, ServerKind.Modded);
+	constructor(config: ConfigService, DBService: ModdedDBService, websocket: AppGateway) {
+		super(
+			new Logger(ScrapperModdedService.name),
+			config,
+			DBService,
+			ServerKind.Modded,
+			websocket,
+		);
 	}
 }
