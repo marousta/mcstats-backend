@@ -5,7 +5,7 @@ import colors from 'src/utils/colors';
 import skipError from 'src/utils/skip_error';
 
 import { ServerKind } from 'src/types';
-import { ServerInfos } from './types';
+import { ServerInfos } from 'src/types';
 
 export class FetcherJava {
 	private readonly logger = new Logger(FetcherJava.name);

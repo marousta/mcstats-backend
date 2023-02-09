@@ -1,23 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { DBService } from './db.service';
+import { DBService } from 'src/database/db.service';
+import { MojangUUID } from 'src/services/mojangUUID.service';
 
 import { HistoryPlayersLogtime } from 'src/entities/history/logtime.entity';
 import { HistoryPlayersOnline } from 'src/entities/history/online.entity';
 import { PlayersLogtime } from 'src/entities/players/logtime.entity';
 import { PlayersSessions } from 'src/entities/players/sessions.entity';
 import { ServerUptime } from 'src/entities/server_uptime.entity';
+
 import { ServerKind } from 'src/types';
 
 @Injectable()
 export class VanillaDBService extends DBService {
 	constructor(
-		configService: ConfigService,
-		httpService: HttpService,
+		mojangUUID: MojangUUID,
 		@InjectRepository(HistoryPlayersLogtime, ServerKind.Vanilla)
 		historyPlayersLogtimeRepo: Repository<HistoryPlayersLogtime>,
 		@InjectRepository(HistoryPlayersOnline, ServerKind.Vanilla)
@@ -31,8 +30,7 @@ export class VanillaDBService extends DBService {
 	) {
 		super(
 			new Logger(VanillaDBService.name),
-			configService,
-			httpService,
+			mojangUUID,
 			historyPlayersLogtimeRepo,
 			historyPlayersOnlineRepo,
 			playersLogtimeRepo,
@@ -45,8 +43,7 @@ export class VanillaDBService extends DBService {
 @Injectable()
 export class ModdedDBService extends DBService {
 	constructor(
-		configService: ConfigService,
-		httpService: HttpService,
+		mojangUUID: MojangUUID,
 		@InjectRepository(HistoryPlayersLogtime, ServerKind.Modded)
 		historyPlayersLogtimeRepo: Repository<HistoryPlayersLogtime>,
 		@InjectRepository(HistoryPlayersOnline, ServerKind.Modded)
@@ -60,8 +57,7 @@ export class ModdedDBService extends DBService {
 	) {
 		super(
 			new Logger(ModdedDBService.name),
-			configService,
-			httpService,
+			mojangUUID,
 			historyPlayersLogtimeRepo,
 			historyPlayersOnlineRepo,
 			playersLogtimeRepo,

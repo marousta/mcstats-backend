@@ -1,4 +1,4 @@
-import { ServerInfos } from '../fetchers/types';
+import { ServerInfos } from 'src/types';
 /**
  * Charts
  */

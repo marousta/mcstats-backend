@@ -73,3 +73,8 @@ export enum ServerKind {
 	Vanilla = 'vanilla',
 	Modded = 'modded',
 }
+
+export interface ServerInfos {
+	version: string;
+	capacity: number;
+}

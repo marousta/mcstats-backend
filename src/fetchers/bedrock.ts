@@ -4,7 +4,7 @@ import { statusBedrock } from 'minecraft-server-util';
 import colors from 'src/utils/colors';
 import skipError from 'src/utils/skip_error';
 
-import { ServerInfos } from './types';
+import { ServerInfos } from 'src/types';
 
 export class FetcherBedrock {
 	private readonly logger = new Logger(FetcherBedrock.name);

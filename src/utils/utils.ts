@@ -1,7 +1,7 @@
-import * as time from 'src/utils/time';
+import { getTimestamp } from 'src/utils/time';
 
 export function calcLogtime(session: number, current: number): number {
-	const timestamp = time.getTimestamp();
+	const timestamp = getTimestamp();
 	const logtime = timestamp - session + current;
 	return logtime;
 }

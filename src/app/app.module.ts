@@ -6,7 +6,7 @@ import { AppController } from 'src/app/app.controller';
 
 import { AppGateway } from 'src/app/app.gateway';
 
-import { AppService } from 'src/services/app.service';
+import { MojangUUID } from 'src/services/mojangUUID.service';
 
 import { ResponseTimeMiddleware } from 'src/middlewares/time.middleware';
 
@@ -26,7 +26,7 @@ const providers = loader.providers;
 		...imports,
 	],
 	controllers,
-	providers: [AppService, AppGateway, ...providers],
+	providers: [MojangUUID, AppGateway, ...providers],
 })
 export class AppModule {
 	configure(consumer: MiddlewareConsumer) {

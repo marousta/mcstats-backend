@@ -11,6 +11,7 @@ import {
 import { ServerKind } from 'src/types';
 
 import moduleLoader from 'src/utils/module_loader';
+
 import { ResponsePlayersCurrentlyOnline } from './types';
 
 @Controller()

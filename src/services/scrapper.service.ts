@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DeleteResult } from 'typeorm';
 
+import { AppGateway } from '../app/app.gateway';
+
 import { VanillaDBService, ModdedDBService } from 'src/database/implemtations.service';
 
 import { FetcherJava } from 'src/fetchers/java';
@@ -17,7 +19,6 @@ import * as utils from 'src/utils/utils';
 
 import { ServerKind } from 'src/types';
 import { ResponseServerInfos, ResponseScrapperData } from 'src/services/types';
-import { AppGateway } from '../app/app.gateway';
 import { WebsocketNamespace, WebsocketPlayersEvent, WebsocketServerEvent } from 'src/app/types';
 
 export class ScrapperService {

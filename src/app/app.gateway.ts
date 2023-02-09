@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import {
 	ConnectedSocket,
 	OnGatewayConnection,
@@ -7,8 +7,8 @@ import {
 	WebSocketGateway,
 } from '@nestjs/websockets';
 import { Server, WebSocket } from 'ws';
+
 import { WebsocketPlayersChange, WebsocketServerStatus, WebsocketServerVersion } from './types';
-import { VanillaScrapperService } from '../services/scrapper.service';
 
 @WebSocketGateway({
 	path: '/api/streaming',

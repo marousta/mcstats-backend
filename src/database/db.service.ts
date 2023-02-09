@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { HttpService } from '@nestjs/axios';
 import { DeleteResult, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
+
+import { MojangUUID } from 'src/services/mojangUUID.service';
 
 import {
 	HistoryPlayersLogtime,
@@ -14,19 +14,11 @@ import { PlayersSessions } from 'src/entities/players/sessions.entity';
 import { ServerUptime } from 'src/entities/server_uptime.entity';
 
 import colors from 'src/utils/colors';
-import {
-	PlayerDBMinecraftFailover,
-	PlayerDBMinecraftFailure,
-	PlayerDBMinecraftSuccess,
-} from 'src/types';
 
 export class DBService {
-	private readonly axios_user_agent = this.configService.get<string>('USER_AGENT');
-
 	constructor(
 		private readonly logger: Logger,
-		private readonly configService: ConfigService,
-		private readonly httpService: HttpService,
+		private readonly mojangUUID: MojangUUID,
 		private readonly historyPlayersLogtimeRepo: Repository<HistoryPlayersLogtime>,
 		private readonly historyPlayersOnlineRepo: Repository<HistoryPlayersOnline>,
 		private readonly playersLogtimeRepo: Repository<PlayersLogtime>,
@@ -44,6 +36,7 @@ export class DBService {
 				return this.historyPlayersOnlineRepo
 					.createQueryBuilder()
 					.select()
+					.orderBy('time', 'ASC')
 					.getMany()
 					.catch((e) => {
 						this.logger.error(
@@ -61,6 +54,7 @@ export class DBService {
 				return this.historyPlayersLogtimeRepo
 					.createQueryBuilder()
 					.select()
+					.orderBy('time', 'ASC')
 					.getMany()
 					.catch((e) => {
 						this.logger.error(
@@ -123,6 +117,7 @@ export class DBService {
 					return this.playersLogtimeRepo
 						.createQueryBuilder()
 						.select()
+						.orderBy('username', 'ASC')
 						.getMany()
 						.catch((e) => {
 							this.logger.debug(
@@ -158,6 +153,7 @@ export class DBService {
 				return this.serverUptimeRepo
 					.createQueryBuilder()
 					.select()
+					.orderBy('time', 'ASC')
 					.getMany()
 					.catch((e) => {
 						this.logger.debug(
@@ -193,6 +189,19 @@ export class DBService {
 			);
 
 			return this.create.user(username);
+		},
+		users: async (): Promise<PlayersLogtime[] | null> => {
+			return this.playersLogtimeRepo
+				.createQueryBuilder('users')
+				.select(['users.uuid', 'users.username'])
+				.getMany()
+				.catch((e) => {
+					this.logger.debug(
+						`${colors.pink}[initTranslationTable]${colors.green} Unable to get users`,
+						e,
+					);
+					return null;
+				});
 		},
 	};
 
@@ -344,7 +353,7 @@ export class DBService {
 				this.logger.debug(
 					`${colors.pink}[create.user]${colors.green} Retrieving ${username} UUID`,
 				);
-				uuid = await this.getMojangUUID(username);
+				uuid = await this.mojangUUID.get(username);
 				if (!uuid) {
 					this.logger.debug(
 						`${colors.pink}[create.user]${colors.green} Failed to retrieve ${username} UUID`,
@@ -443,40 +452,46 @@ export class DBService {
 		},
 	};
 
-	async getMojangUUID(username: string): Promise<string | null> {
-		this.logger.debug(`${colors.pink}[getMojangUUID]${colors.green} Fetching UUID`);
-
-		const PlayerDB:
-			| PlayerDBMinecraftSuccess
-			| PlayerDBMinecraftFailure
-			| PlayerDBMinecraftFailover = await this.httpService
-			.axiosRef({
-				url: 'https://playerdb.co/api/player/minecraft/' + username,
-				method: 'get',
-				headers: {
-					'User-Agent': this.axios_user_agent,
-					'Accept-Encoding': 'application/json',
-				},
-				responseType: 'json',
-			})
-			.then((r): PlayerDBMinecraftSuccess | PlayerDBMinecraftFailure => {
-				return r.data;
-			})
-			.catch((e): PlayerDBMinecraftFailover => {
-				this.logger.debug(
-					`${colors.pink}[getMojangUUID]${colors.green} Unable to get mojang uuid for ${username}`,
-					e,
-				);
-				return {
-					success: false,
-				};
-			});
-
-		if (!PlayerDB.success) {
-			return null;
-		}
-		return PlayerDB.data.player.id;
-	}
+	public readonly migrate = {
+		server: {
+			uptime: (entity: ServerUptime) => {
+				return this.serverUptimeRepo.save(entity).catch((e) => {
+					this.logger.error(
+						`${colors.pink}[migrate.server.uptime]${colors.red} Unable to insert entity`,
+					);
+					return null;
+				});
+			},
+		},
+		history: {
+			logtime: (entity: HistoryPlayersLogtime) => {
+				return this.historyPlayersLogtimeRepo.save(entity).catch((e) => {
+					this.logger.error(
+						`${colors.pink}[migrate.history.logtime]${colors.red} Unable to insert entity`,
+					);
+					return null;
+				});
+			},
+			online: (entity: HistoryPlayersOnline) => {
+				return this.historyPlayersOnlineRepo.save(entity).catch((e) => {
+					this.logger.error(
+						`${colors.pink}[migrate.history.online]${colors.red} Unable to insert entity`,
+					);
+					return null;
+				});
+			},
+		},
+		player: {
+			logtime: (entity: PlayersLogtime) => {
+				return this.playersLogtimeRepo.save(entity).catch((e) => {
+					this.logger.error(
+						`${colors.pink}[migrate.player.logtime]${colors.red} Unable to insert entity`,
+					);
+					return null;
+				});
+			},
+		},
+	};
 
 	public translation_table: { [key: string]: string } = {};
 
@@ -485,23 +500,14 @@ export class DBService {
 			return;
 		}
 
-		const users = await this.playersLogtimeRepo
-			.createQueryBuilder('users')
-			.select(['users.uuid', 'users.username'])
-			.getMany()
-			.catch((e) => {
-				this.logger.debug(
-					`${colors.pink}[initTranslationTable]${colors.green} Unable to get users`,
-					e,
-				);
-				return null;
-			});
-
+		const users = await this.get.users();
 		if (!users) {
-			this.logger.error(
-				`${colors.pink}[initTranslationTable]${colors.green} Unable to create translation table for converting Mojang UUIDs to usernames`,
-			);
-			process.exit(1);
+			if (!users) {
+				this.logger.error(
+					`${colors.pink}[initTranslationTable]${colors.green} Unable to create translation table for converting Mojang UUIDs to usernames`,
+				);
+				process.exit(1);
+			}
 		}
 
 		users.forEach((user) => (this.translation_table[user.uuid] = user.username));
