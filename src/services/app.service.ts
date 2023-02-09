@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ScrapperVanillaService } from './scrapper.service';
+import { VanillaScrapperService } from './scrapper.service';
 
 @Injectable()
 export class AppService {
 	private readonly logger = new Logger(AppService.name);
-	constructor(private readonly scrapperService: ScrapperVanillaService) {}
+	constructor(private readonly scrapperService: VanillaScrapperService) {}
 
 	serverStatus() {
 		return this.scrapperService.getServerState();

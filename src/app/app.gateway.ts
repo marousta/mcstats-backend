@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { forwardRef, Inject, Logger } from '@nestjs/common';
 import {
 	ConnectedSocket,
 	OnGatewayConnection,
@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, WebSocket } from 'ws';
 import { WebsocketPlayersChange, WebsocketServerStatus, WebsocketServerVersion } from './types';
+import { VanillaScrapperService } from '../services/scrapper.service';
 
 @WebSocketGateway({
 	path: '/api/streaming',
@@ -17,6 +18,8 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect, OnG
 	private readonly logger = new Logger(AppGateway.name);
 
 	private server: Server;
+
+	constructor() {}
 
 	afterInit(server: Server) {
 		this.server = server;
@@ -32,6 +35,7 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect, OnG
 	}
 
 	dispatch(data: WebsocketServerStatus | WebsocketServerVersion | WebsocketPlayersChange) {
+		this.logger.debug(`[dispatch] Dispatch ${JSON.stringify(data)}`);
 		const connections = this.server.clients.size;
 		let i = connections;
 		for (const client of this.server.clients) {

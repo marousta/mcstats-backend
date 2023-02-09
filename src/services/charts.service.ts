@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ModdedDBService, VanillaDBService } from 'src/database/implemtations.service';
-import { ScrapperModdedService, ScrapperVanillaService } from './scrapper.service';
+import { ModdedScrapperService, VanillaScrapperService } from './scrapper.service';
 
 import { PlayersLogtime } from 'src/entities/players/logtime.entity';
 
@@ -19,7 +19,7 @@ export class ChartsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly DBService: VanillaDBService | ModdedDBService,
-		private readonly scrapperService: ScrapperVanillaService | ScrapperModdedService,
+		private readonly scrapperService: VanillaScrapperService | ModdedScrapperService,
 	) {}
 
 	async uptime(): Promise<ResponseHistoryServerUptime[]> {
@@ -155,17 +155,16 @@ export class ChartsService {
 		return history;
 	}
 }
-
 @Injectable()
-export class ChartsVanillaService extends ChartsService {
-	constructor(DBService: VanillaDBService, scrapperService: ScrapperVanillaService) {
-		super(new Logger(ChartsVanillaService.name), DBService, scrapperService);
+export class VanillaChartsService extends ChartsService {
+	constructor(DBService: VanillaDBService, scrapperService: VanillaScrapperService) {
+		super(new Logger(VanillaChartsService.name), DBService, scrapperService);
 	}
 }
 
 @Injectable()
-export class ChartsModdedService extends ChartsService {
-	constructor(DBService: ModdedDBService, scrapperService: ScrapperModdedService) {
-		super(new Logger(ChartsModdedService.name), DBService, scrapperService);
+export class ModdedChartsService extends ChartsService {
+	constructor(DBService: ModdedDBService, scrapperService: ModdedScrapperService) {
+		super(new Logger(ModdedChartsService.name), DBService, scrapperService);
 	}
 }

@@ -11,21 +11,22 @@ import { HistoryPlayersOnline } from 'src/entities/history/online.entity';
 import { PlayersLogtime } from 'src/entities/players/logtime.entity';
 import { PlayersSessions } from 'src/entities/players/sessions.entity';
 import { ServerUptime } from 'src/entities/server_uptime.entity';
+import { ServerKind } from 'src/types';
 
 @Injectable()
 export class VanillaDBService extends DBService {
 	constructor(
 		configService: ConfigService,
 		httpService: HttpService,
-		@InjectRepository(HistoryPlayersLogtime, 'vanilla')
+		@InjectRepository(HistoryPlayersLogtime, ServerKind.Vanilla)
 		historyPlayersLogtimeRepo: Repository<HistoryPlayersLogtime>,
-		@InjectRepository(HistoryPlayersOnline, 'vanilla')
+		@InjectRepository(HistoryPlayersOnline, ServerKind.Vanilla)
 		historyPlayersOnlineRepo: Repository<HistoryPlayersOnline>,
-		@InjectRepository(PlayersLogtime, 'vanilla')
+		@InjectRepository(PlayersLogtime, ServerKind.Vanilla)
 		playersLogtimeRepo: Repository<PlayersLogtime>,
-		@InjectRepository(PlayersSessions, 'vanilla')
+		@InjectRepository(PlayersSessions, ServerKind.Vanilla)
 		playersSessionsRepo: Repository<PlayersSessions>,
-		@InjectRepository(ServerUptime, 'vanilla')
+		@InjectRepository(ServerUptime, ServerKind.Vanilla)
 		serverUptimeRepo: Repository<ServerUptime>,
 	) {
 		super(
@@ -46,15 +47,15 @@ export class ModdedDBService extends DBService {
 	constructor(
 		configService: ConfigService,
 		httpService: HttpService,
-		@InjectRepository(HistoryPlayersLogtime, 'modded')
+		@InjectRepository(HistoryPlayersLogtime, ServerKind.Modded)
 		historyPlayersLogtimeRepo: Repository<HistoryPlayersLogtime>,
-		@InjectRepository(HistoryPlayersOnline, 'modded')
+		@InjectRepository(HistoryPlayersOnline, ServerKind.Modded)
 		historyPlayersOnlineRepo: Repository<HistoryPlayersOnline>,
-		@InjectRepository(PlayersLogtime, 'modded')
+		@InjectRepository(PlayersLogtime, ServerKind.Modded)
 		playersLogtimeRepo: Repository<PlayersLogtime>,
-		@InjectRepository(PlayersSessions, 'modded')
+		@InjectRepository(PlayersSessions, ServerKind.Modded)
 		playersSessionsRepo: Repository<PlayersSessions>,
-		@InjectRepository(ServerUptime, 'modded')
+		@InjectRepository(ServerUptime, ServerKind.Modded)
 		serverUptimeRepo: Repository<ServerUptime>,
 	) {
 		super(

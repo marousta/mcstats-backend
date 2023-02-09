@@ -247,6 +247,14 @@ export class DBService {
 					`${colors.pink}[create.player.session]${colors.green} Creating session for ${user.username} (${user.uuid})`,
 				);
 
+				const exist = await this.get.player.session(user);
+				if (exist && exist.length) {
+					this.logger.warn(
+						`${colors.pink}[create.player.session]${colors.yellow} ${exist.length} sessions already exist for ${user.username} (${user.uuid})`,
+					);
+					return null;
+				}
+
 				const entity = this.playersSessionsRepo.create({
 					connection_time: new Date(),
 					user,

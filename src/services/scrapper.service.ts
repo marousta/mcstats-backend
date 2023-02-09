@@ -21,7 +21,6 @@ import { AppGateway } from '../app/app.gateway';
 import { WebsocketNamespace, WebsocketPlayersEvent, WebsocketServerEvent } from 'src/app/types';
 
 export class ScrapperService {
-	// private readonly WEBSOCKET_PORT: number = this.config.get<number>('WEBSOCKET_PORT') ?? 0;
 	private readonly QUERY_RETRY: number;
 
 	private readonly fetchers: {
@@ -215,7 +214,7 @@ export class ScrapperService {
 			await this.fetchServerVersion();
 			this.websocket.dispatch({
 				namespace: WebsocketNamespace.Server,
-				event: WebsocketServerEvent.Version,
+				event: WebsocketServerEvent.Infos,
 				server: {
 					kind: this.kind,
 					version: this.server_infos,
@@ -298,10 +297,9 @@ export class ScrapperService {
 					server: {
 						kind: this.kind,
 					},
-					players: {
-						online: player_names.length,
-						usernames: player_names || [],
-					},
+					players: this.actives_sessions.map((sessions) => {
+						return { uuid: sessions.user.uuid, username: sessions.user.username };
+					}),
 				});
 			}
 			// this.actives_sessions = await this.initActivesSessions();
@@ -374,9 +372,9 @@ export class ScrapperService {
 		const actives_sessions = this.actives_sessions ?? [];
 
 		// players joined
-		if (player_names.length < actives_sessions.length) {
-			return false;
-		}
+		// if (player_names.length < actives_sessions.length) {
+		// 	return false;
+		// }
 
 		// create new users if needed
 		const new_users = await this.newUsers(player_names);
@@ -398,7 +396,7 @@ export class ScrapperService {
 		// create sessions
 		const promises: Promise<PlayersSessions | null>[] = [];
 		diff.forEach((user) =>
-			user ? promises.push(this.DBService.create.player.session(user)) : 0,
+			user ? promises.push(this.DBService.create.player.session(user)) : null,
 		);
 		const new_sessions = await Promise.all(promises);
 
@@ -417,9 +415,12 @@ export class ScrapperService {
 			return null;
 		}
 
-		this.actives_sessions = [...actives_sessions, ...(new_sessions as PlayersSessions[])];
+		this.actives_sessions = [
+			...actives_sessions,
+			...(new_sessions.filter((session) => session !== null) as PlayersSessions[]),
+		];
 
-		return true;
+		return true; //
 	}
 
 	async createLogtime(session: PlayersSessions): Promise<PlayersLogtime> {
@@ -436,12 +437,12 @@ export class ScrapperService {
 
 	async endSessions(player_names: Array<string>): Promise<boolean | null> {
 		const actives_sessions =
-			this.actives_sessions?.filter((x) => !player_names.includes(x.user.username)) ?? [];
+			this.actives_sessions!.filter((x) => !player_names.includes(x.user.username)) ?? [];
 
 		// players left
-		if (player_names.length > actives_sessions.length) {
-			return false;
-		}
+		// if (player_names.length > actives_sessions.length) {
+		// 	return false;
+		// }
 
 		let diff = actives_sessions
 			.map((session) => {
@@ -502,9 +503,12 @@ export class ScrapperService {
 			return null;
 		}
 
-		this.actives_sessions = actives_sessions.filter((original) => {
-			!diff.map((removed) => original.uuid === removed.uuid).includes(true);
-		});
+		this.actives_sessions = this.actives_sessions!.map((original) => {
+			if (diff.map((removed) => original.uuid === removed.uuid).includes(true)) {
+				return null;
+			}
+			return original;
+		}).filter((session) => session !== null) as PlayersSessions[];
 
 		return true;
 	}
@@ -667,10 +671,10 @@ export class ScrapperService {
 }
 
 @Injectable()
-export class ScrapperVanillaService extends ScrapperService {
+export class VanillaScrapperService extends ScrapperService {
 	constructor(config: ConfigService, DBService: VanillaDBService, websocket: AppGateway) {
 		super(
-			new Logger(ScrapperVanillaService.name),
+			new Logger(VanillaScrapperService.name),
 			config,
 			DBService,
 			ServerKind.Vanilla,
@@ -680,10 +684,10 @@ export class ScrapperVanillaService extends ScrapperService {
 }
 
 @Injectable()
-export class ScrapperModdedService extends ScrapperService {
+export class ModdedScrapperService extends ScrapperService {
 	constructor(config: ConfigService, DBService: ModdedDBService, websocket: AppGateway) {
 		super(
-			new Logger(ScrapperModdedService.name),
+			new Logger(ModdedScrapperService.name),
 			config,
 			DBService,
 			ServerKind.Modded,

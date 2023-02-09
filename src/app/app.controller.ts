@@ -1,18 +1,24 @@
 import { Controller, Get, Request } from '@nestjs/common';
 
-import { ChartsModdedService, ChartsVanillaService } from 'src/services/charts.service';
-import { ScrapperModdedService, ScrapperVanillaService } from 'src/services/scrapper.service';
+import { ModdedChartsService, VanillaChartsService } from 'src/services/charts.service';
+import { ModdedScrapperService, VanillaScrapperService } from 'src/services/scrapper.service';
 import {
 	ResponseHistoryPlayersLogtimes,
 	ResponseHistoryPlayersMaxOnline,
 	ResponseHistoryServerUptime,
 	ResponseServerInfos,
 } from 'src/services/types';
+import { ServerKind } from 'src/types';
 
-import controllerLoader from 'src/utils/controllers_loader';
+import moduleLoader from 'src/utils/module_loader';
+import { ResponsePlayersCurrentlyOnline } from './types';
 
 @Controller()
 export class AppController {
+	private readonly modules: string[] = moduleLoader().controllers.map((entry: any) =>
+		(entry.name as string).replace('Controller', '').toLowerCase(),
+	);
+
 	@Get('ping')
 	ping(): string {
 		return 'PONG';
@@ -25,18 +31,15 @@ export class AppController {
 
 	@Get('endpoints')
 	endpoints(): string[] {
-		const controllers = controllerLoader();
-		return controllers.map((entry: any) =>
-			(entry.name as string).replace('Controller', '').toLowerCase(),
-		);
+		return this.modules;
 	}
 }
 
-@Controller('vanilla')
+@Controller(ServerKind.Vanilla)
 export class VanillaController {
 	constructor(
-		private readonly scrapperService: ScrapperVanillaService,
-		private readonly ChartsService: ChartsVanillaService,
+		private readonly scrapperService: VanillaScrapperService,
+		private readonly ChartsService: VanillaChartsService,
 	) {}
 
 	@Get('server/status')
@@ -50,13 +53,15 @@ export class VanillaController {
 	}
 
 	@Get('players/online')
-	playersOnline(): string[] {
+	playersOnline(): ResponsePlayersCurrentlyOnline[] {
 		const players_sessions = this.scrapperService.getActivesSessions();
 		if (!players_sessions) {
 			return [];
 		}
 
-		return players_sessions.map((sessions) => sessions.user.username);
+		return players_sessions.map((sessions) => {
+			return { uuid: sessions.user.uuid, username: sessions.user.username };
+		});
 	}
 
 	/**
@@ -79,11 +84,11 @@ export class VanillaController {
 	}
 }
 
-@Controller('modded')
+@Controller(ServerKind.Modded)
 export class ModdedController {
 	constructor(
-		private readonly scrapperService: ScrapperModdedService,
-		private readonly ChartsService: ChartsModdedService,
+		private readonly scrapperService: ModdedScrapperService,
+		private readonly ChartsService: ModdedChartsService,
 	) {}
 
 	@Get('server/status')
@@ -97,13 +102,15 @@ export class ModdedController {
 	}
 
 	@Get('players/online')
-	playersOnline(): string[] {
+	playersOnline(): ResponsePlayersCurrentlyOnline[] {
 		const players_sessions = this.scrapperService.getActivesSessions();
 		if (!players_sessions) {
 			return [];
 		}
 
-		return players_sessions.map((sessions) => sessions.user.username);
+		return players_sessions.map((sessions) => {
+			return { uuid: sessions.user.uuid, username: sessions.user.username };
+		});
 	}
 
 	/**
