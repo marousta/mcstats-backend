@@ -92,7 +92,7 @@ export class ScrapperService {
 			this.logger.error(
 				`${colors.pink}[constructor]${colors.red} No avaliable servers to fetch data from`,
 			);
-			this.logger.error(`${colors.pink}[constructor]${colors.red}Check your config`);
+			this.logger.error(`${colors.pink}[constructor]${colors.red} Check your config`);
 			process.exit(1);
 		}
 

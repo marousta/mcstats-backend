@@ -2,7 +2,8 @@ import { Logger } from '@nestjs/common';
 
 export default class {
 	private readonly logger = new Logger('validateEnv');
-	error = false;
+	private errors: string[] = [];
+	private error = false;
 
 	private checkProtocol(protocol: string) {
 		return protocol === 'http' || protocol == 'https';
@@ -12,7 +13,7 @@ export default class {
 		const value: string | undefined = process.env[variable];
 
 		if (!value || value === '') {
-			this.logger.error('env ' + variable + ' is missing.');
+			this.errors.push('env ' + variable + ' is missing.');
 			this.error = true;
 			return null;
 		}
@@ -22,7 +23,7 @@ export default class {
 	private readonly checks = {
 		protocol: (variable: string, value: string) => {
 			if (variable === 'PROTOCOL' && !this.checkProtocol(value)) {
-				this.logger.error(
+				this.errors.push(
 					'Invalid ' + variable + ', expected http or https, got ' + value + '.',
 				);
 				this.error = true;
@@ -32,7 +33,7 @@ export default class {
 		},
 		port: (variable: string, value: string) => {
 			if (variable === 'PORT' && !this.checkProtocol(value)) {
-				this.logger.error(
+				this.errors.push(
 					'Invalid ' +
 						variable +
 						', expected value between 1 and 65,535, got ' +
@@ -46,7 +47,7 @@ export default class {
 		},
 		nan: (variable: string, value: string) => {
 			if (isNaN(parseInt(value))) {
-				this.logger.error(variable + ' should be a number.');
+				this.errors.push(variable + ' should be a number.');
 				this.error = true;
 				return false;
 			}
@@ -54,7 +55,7 @@ export default class {
 		},
 		boolean: (variable: string, value: string) => {
 			if (value !== 'true' && value !== 'false') {
-				this.logger.error(variable + ' should be a boolean.');
+				this.errors.push(variable + ' should be a boolean.');
 				this.error = true;
 				return false;
 			}
@@ -76,17 +77,20 @@ export default class {
 			case 'boolean':
 				return this.checks.boolean(variable, value);
 			default:
-				this.logger.error(variable + ' type is unknown.');
+				this.errors.push(variable + ' type is unknown.');
 				this.error = true;
 				return false;
 		}
 		return true;
 	}
 
-	result() {
-		if (this.error) {
-			this.logger.error('\nMissing arguments.\n');
-			process.exit(1);
-		}
+	getErrorState() {
+		return this.error;
+	}
+
+	printErrorMessage() {
+		this.errors.forEach((error) => {
+			this.logger.error(error);
+		});
 	}
 }

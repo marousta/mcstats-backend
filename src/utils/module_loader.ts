@@ -72,7 +72,10 @@ export default function (): {
 	const MC_BEDROCK_HOST = config.get<string>('MC_BEDROCK_HOST');
 	const MC_BEDROCK_PORT = config.get<string>('MC_BEDROCK_PORT');
 
-	if ((MC_HOST && MC_QUERY_PORT && MC_RCON_PORT) || (MC_BEDROCK_HOST && MC_BEDROCK_PORT)) {
+	if (
+		(MC_HOST && MC_QUERY_PORT && MC_RCON_PORT) ||
+		(MC_HOST && MC_QUERY_PORT && MC_RCON_PORT && MC_BEDROCK_HOST && MC_BEDROCK_PORT)
+	) {
 		imports.push(...typeorm(ServerKind.Vanilla));
 		controllers.push(VanillaController);
 		providers.push(VanillaDBService);
