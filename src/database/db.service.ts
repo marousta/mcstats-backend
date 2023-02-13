@@ -46,9 +46,27 @@ export class DBService {
 						return null;
 					});
 			},
-			logtime: async (): Promise<HistoryPlayersLogtime[] | null> => {
+			logtime: async (): Promise<HistoryPlayersLogtime | null> => {
 				this.logger.debug(
 					`${colors.pink}[get.history.logtime]${colors.green} Getting players logtime history`,
+				);
+
+				return this.historyPlayersLogtimeRepo
+					.createQueryBuilder()
+					.select()
+					.orderBy('time', 'DESC')
+					.getOne()
+					.catch((e) => {
+						this.logger.error(
+							`${colors.pink}[get.history.logtime]${colors.red} Unable to get players logtime history`,
+							e,
+						);
+						return null;
+					});
+			},
+			logtimes: async (): Promise<HistoryPlayersLogtime[] | null> => {
+				this.logger.debug(
+					`${colors.pink}[get.history.logtimes]${colors.green} Getting players logtime history`,
 				);
 
 				return this.historyPlayersLogtimeRepo
@@ -58,7 +76,7 @@ export class DBService {
 					.getMany()
 					.catch((e) => {
 						this.logger.error(
-							`${colors.pink}[get.history.logtime]${colors.red} Unable to get players logtime history`,
+							`${colors.pink}[get.history.logtimes]${colors.red} Unable to get players logtime history`,
 							e,
 						);
 						return null;

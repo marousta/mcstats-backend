@@ -371,8 +371,8 @@ export class Migrate {
 			.replace('}', '')
 			.split(',')
 			.map((v) => v.replace(' ', ''));
-		if (parse.length && parse[0] && !isNaN(parseInt(parse[0]))) {
-			return parse.map((v) => parseInt(v));
+		if (parse.length && parse[0] && !isNaN(+parse[0])) {
+			return parse.map((v) => +v);
 		}
 		return parse;
 	}

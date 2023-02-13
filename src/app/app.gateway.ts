@@ -9,6 +9,7 @@ import {
 import { Server, WebSocket } from 'ws';
 
 import { WebsocketPlayersChange, WebsocketServerStatus, WebsocketServerVersion } from './types';
+import { ConfigService } from '@nestjs/config';
 
 @WebSocketGateway({
 	path: '/api/streaming',
@@ -16,10 +17,11 @@ import { WebsocketPlayersChange, WebsocketServerStatus, WebsocketServerVersion }
 })
 export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
 	private readonly logger = new Logger(AppGateway.name);
+	private readonly cli: boolean = this.config.get<boolean>('CLI') ?? false;
 
 	private server: Server;
 
-	constructor() {}
+	constructor(private readonly config: ConfigService) {}
 
 	afterInit(server: Server) {
 		this.server = server;
@@ -35,6 +37,9 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect, OnG
 	}
 
 	dispatch(data: WebsocketServerStatus | WebsocketServerVersion | WebsocketPlayersChange) {
+		if (this.cli) {
+			return;
+		}
 		this.logger.debug(`[dispatch] Dispatch ${JSON.stringify(data)}`);
 		const connections = this.server.clients.size;
 		let i = connections;

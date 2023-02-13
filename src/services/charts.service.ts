@@ -74,7 +74,7 @@ export class ChartsService {
 	}
 
 	async playersLogtimeHistory(): Promise<ResponseHistoryPlayersLogtimes[]> {
-		const players_logtimes = await this.DBService.get.history.logtime();
+		const players_logtimes = await this.DBService.get.history.logtimes();
 		const users_logtime = (await this.DBService.get.player.logtime({})) as
 			| PlayersLogtime[]
 			| null;

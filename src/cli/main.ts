@@ -38,6 +38,9 @@ async function bootstrap() {
 		case 'migrate':
 			await Executor.migrateDB(app, args);
 			break;
+		case 'save':
+			await Executor.saveDB(app, args);
+			break;
 		default:
 			logger.error(`This is bad #1`);
 			process.exit(1);

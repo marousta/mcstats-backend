@@ -38,7 +38,6 @@ async function bootstrap() {
 	 */
 
 	const config = app.get(ConfigService);
-	const WEBSOCKET_PORT = config.get<string>('WEBSOCKET_PORT');
 	const MC_HOST = config.get<string>('MC_HOST');
 	const MC_QUERY_PORT = config.get<string>('MC_QUERY_PORT');
 	const MC_RCON_PORT = config.get<string>('MC_RCON_PORT');
@@ -50,7 +49,6 @@ async function bootstrap() {
 	const QUERY_RETRY = config.get<string>('QUERY_RETRY');
 
 	logger.log(`Queries retry set to ${QUERY_RETRY}`);
-	logger.log(`Websocket listening on ${WEBSOCKET_PORT}`);
 	logger.log(`Requesting data from`);
 	if (MC_HOST && MC_QUERY_PORT && MC_RCON_PORT) {
 		logger.log(`	- Vanilla: H:${MC_HOST} Q:${MC_QUERY_PORT} R:${MC_RCON_PORT}`);

@@ -5,13 +5,12 @@ import { HttpModule } from '@nestjs/axios';
 import { MojangUUID } from 'src/services/mojangUUID.service';
 
 import moduleLoader from 'src/utils/module_loader';
+import { AppGateway } from '../app/app.gateway';
 
 const loader = moduleLoader();
 
 const imports = loader.imports;
-const providers = loader.providers.filter(
-	(service) => !service.name.includes('Scrapper') && !service.name.includes('Charts'),
-);
+const providers = loader.providers.filter((service) => !service.name.includes('Charts'));
 
 @Module({
 	imports: [
@@ -21,6 +20,6 @@ const providers = loader.providers.filter(
 		}),
 		...imports,
 	],
-	providers: [MojangUUID, ...providers],
+	providers: [MojangUUID, AppGateway, ...providers],
 })
 export class CLIModule {}

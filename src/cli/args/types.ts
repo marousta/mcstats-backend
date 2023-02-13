@@ -10,3 +10,13 @@ export interface ArgsMigrate {
 	kind: ServerKind;
 	filename: string;
 }
+
+export enum SaveTarget {
+	Logtime = 'logtimes',
+}
+
+export interface ArgsSave {
+	exec: 'save';
+	kind: ServerKind;
+	target: SaveTarget;
+}

@@ -2,12 +2,12 @@ import { Logger } from '@nestjs/common';
 import { existsSync } from 'fs';
 
 import { ServerKind } from 'src/types';
-import { ArgsHelp, ArgsMigrate } from 'src/cli/args/types';
+import { ArgsHelp, ArgsMigrate, ArgsSave, SaveTarget } from 'src/cli/args/types';
 
 export class Args {
 	private readonly logger = new Logger('ArgumentsParser');
 
-	private parsed: ArgsHelp | ArgsMigrate;
+	private parsed: ArgsHelp | ArgsMigrate | ArgsSave;
 
 	constructor() {
 		if (!process.argv[2]) {
@@ -51,6 +51,20 @@ export class Args {
 					filename,
 				};
 				break;
+
+			case 'save':
+				if (process.argv.length - 2 !== 3) {
+					this.logger.error('Missing arguments');
+					process.exit(1);
+				}
+
+				this.parsed = {
+					exec: 'save',
+					kind: this.getServerKind(process.argv[3]!),
+					target: this.getTarget(process.argv[4]!),
+				};
+				break;
+
 			default:
 				this.logger.error(`Unknow argument: ${exec}`);
 				process.exit(1);
@@ -78,5 +92,16 @@ export class Args {
 			process.exit(1);
 		}
 		return arg;
+	}
+
+	private getTarget(arg: string): SaveTarget {
+		const check = Object.values(SaveTarget)
+			.filter((v) => arg === v)
+			.filter((x) => x);
+		if (!check.length) {
+			this.logger.error(`Unknow target: ${arg}`);
+			process.exit(1);
+		}
+		return arg as SaveTarget;
 	}
 }

@@ -37,8 +37,9 @@ export class ScrapperService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly config: ConfigService,
-		private readonly DBService: VanillaDBService | ModdedDBService,
 		private readonly kind: ServerKind,
+		private readonly cli: boolean,
+		private readonly DBService: VanillaDBService | ModdedDBService,
 		private readonly websocket: AppGateway,
 	) {
 		this.QUERY_RETRY = this.config.get<number>('QUERY_RETRY') ?? 0;
@@ -96,7 +97,9 @@ export class ScrapperService {
 			process.exit(1);
 		}
 
-		this.scrap();
+		if (!this.cli) {
+			this.scrap();
+		}
 	}
 
 	private async updateServerStatus(status: boolean): Promise<boolean> {
@@ -538,6 +541,15 @@ export class ScrapperService {
 	}
 
 	async scrap() {
+		if (this.cli) {
+			const scrapped = await this.scrapper();
+			if (!scrapped) {
+				return;
+			}
+			this.scrapped = scrapped;
+			this.logger.verbose(`${colors.pink}[interval.scrap]${colors.cyan} OK`);
+			return;
+		}
 		await this.fetchServerVersion();
 
 		setInterval(async () => {
@@ -549,12 +561,13 @@ export class ScrapperService {
 			this.logger.verbose(`${colors.pink}[interval.scrap]${colors.cyan} OK`);
 		}, 3000);
 		setInterval(async () => {
-			const t = new time.getTime().half().split(':');
-			const hours = parseInt(t[0]);
-			const mins = parseInt(t[1]);
+			const t = new time.getTime().half();
+			const s = t.split(':');
+			const hours = parseInt(s[0]);
+			const mins = parseInt(s[1]);
 
 			// create logtime history each days at 12:00pm
-			if (hours === 0 && mins === 0) {
+			if (t === '12:00pm') {
 				const logtime = await this.save.history.logtime();
 				if (!logtime) {
 					this.logger.error(
@@ -576,7 +589,7 @@ export class ScrapperService {
 		}, 60000);
 	}
 
-	private readonly save = {
+	public readonly save = {
 		history: {
 			logtime: async () => {
 				let logtimes = (await this.DBService.get.player.logtime()) as
@@ -677,8 +690,9 @@ export class VanillaScrapperService extends ScrapperService {
 		super(
 			new Logger(VanillaScrapperService.name),
 			config,
-			DBService,
 			ServerKind.Vanilla,
+			config.get<boolean>('CLI') ?? false,
+			DBService,
 			websocket,
 		);
 	}
@@ -690,8 +704,9 @@ export class ModdedScrapperService extends ScrapperService {
 		super(
 			new Logger(ModdedScrapperService.name),
 			config,
-			DBService,
 			ServerKind.Modded,
+			config.get<boolean>('CLI') ?? false,
+			DBService,
 			websocket,
 		);
 	}
