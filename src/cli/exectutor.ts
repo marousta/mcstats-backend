@@ -107,7 +107,7 @@ export async function saveDB(app: INestApplicationContext, args: ArgsSave) {
 				logger.error('Unable to get result entity, uncertain state');
 				process.exit(1);
 			}
-			console.log(result.logtimes);
+			console.log(result);
 			break;
 		default:
 			logger.error('This is bad #3');

@@ -315,19 +315,11 @@ export class ScrapperService {
 			this.max_active_players = active_players;
 		}
 
-		// const since = await this.dbService.get.server.lastUptime();
-		// if (since === null) {
-		// return null;
-		// }
-
-		// this.server_up_since = since ? since.time : new Date()
-
 		return {
 			timestamp: time.getTimestamp(),
 			server: {
 				state: this.server_state,
 				version: this.server_infos,
-				// since: new time.getTime(this.server_up_since).timestamp(),
 			},
 			players: {
 				online: player_names.length,
@@ -522,6 +514,7 @@ export class ScrapperService {
 		java: {
 			version: 'Error',
 			capacity: -1,
+			motd: '',
 		},
 		bedrock: null,
 	};

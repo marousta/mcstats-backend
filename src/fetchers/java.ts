@@ -16,6 +16,7 @@ export class FetcherJava {
 
 	private version: string;
 	private capacity: number;
+	private motd: string;
 
 	constructor(kind: ServerKind, MC_HOST: string, MC_QUERY_PORT: number) {
 		this.kind = kind;
@@ -62,6 +63,18 @@ export class FetcherJava {
 				} capacity updated!`,
 			);
 		}
-		return { version: this.version, capacity: this.capacity };
+		if (this.motd !== query.motd.clean) {
+			this.motd = query.motd.clean;
+			this.logger.log(
+				`Java ${
+					this.kind === ServerKind.Vanilla
+						? 'Vanilla'
+						: this.kind === ServerKind.Modded
+						? 'Modded'
+						: '???'
+				} motd updated!`,
+			);
+		}
+		return { version: this.version, capacity: this.capacity, motd: this.motd };
 	}
 }

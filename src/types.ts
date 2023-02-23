@@ -77,4 +77,5 @@ export enum ServerKind {
 export interface ServerInfos {
 	version: string;
 	capacity: number;
+	motd: string;
 }

@@ -14,6 +14,7 @@ export class FetcherBedrock {
 
 	private version: string;
 	private capacity: number;
+	private motd: string;
 
 	constructor(MC_BEDROCK_HOST: string, MC_BEDROCK_PORT: number) {
 		this.MC_BEDROCK_HOST = MC_BEDROCK_HOST;
@@ -29,9 +30,11 @@ export class FetcherBedrock {
 			}
 			return null;
 		});
+
 		if (!query) {
 			return null;
 		}
+
 		if (this.version != query.version.name) {
 			this.version = query.version.name;
 			this.logger.log('Bedrock version updated!');
@@ -40,6 +43,11 @@ export class FetcherBedrock {
 			this.capacity = query.players.max;
 			this.logger.log('Bedrock capacity updated!');
 		}
-		return { version: this.version, capacity: this.capacity };
+		if (this.motd !== query.motd.clean) {
+			this.motd = query.motd.clean;
+			this.logger.log('Bedrock motd updated!');
+		}
+
+		return { version: this.version, capacity: this.capacity, motd: this.motd };
 	}
 }

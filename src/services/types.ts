@@ -42,7 +42,6 @@ export interface ResponseServerInfos {
 export interface ResponseServer {
 	state: boolean;
 	version: ResponseServerInfos;
-	// since: number;
 }
 
 export interface ResponseScrapperData {
